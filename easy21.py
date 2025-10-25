@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import random
 
+from agents import MonteCarloAgent
 from base import Env, Outcome, Agent
 
 
@@ -136,3 +137,10 @@ class NaiveAgent(Agent[Easy21State, Easy21Action]):
             return Easy21Action.STICK
         else:
             return Easy21Action.HIT
+
+
+class MCEasy21Agent(MonteCarloAgent[Easy21State, Easy21Action]):
+    """An agent that uses Monte Carlo methods to learn the value function for Easy21."""
+
+    def action_space(self) -> list[Easy21Action]:
+        return [Easy21Action.HIT, Easy21Action.STICK]

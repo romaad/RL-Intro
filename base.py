@@ -50,6 +50,14 @@ class Agent(Generic[State, Action]):
     def act(self, s: State) -> Action:
         raise NotImplementedError
 
+    # Optional method to update the agent's knowledge after an episode
+    def update(self, steps: list[Step[State, Action]]) -> None:
+        pass
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
+
 
 class Runner(Generic[State, Action]):
     """Base class for running
@@ -78,6 +86,7 @@ class Runner(Generic[State, Action]):
             steps.append(Step(action=action, outcome=outcome))
         if print_game:
             print("Game history:", ",\n".join([str(step) for step in steps]))
+        agent.update(steps)
         return r
 
     def run_episodes(
@@ -88,10 +97,13 @@ class Runner(Generic[State, Action]):
         record_cnt: int = 0,
     ) -> float:
         total_reward = 0.0
-        for _ in range(num_episodes):
-            p = random.uniform(0, 1)
-            print_game = False
-            if record_cnt > 0 and p < (record_cnt / num_episodes):
-                print_game = True
+        for epi in range(num_episodes):
+            print_game = (
+                record_cnt > 0 and random.randint(1, num_episodes) <= record_cnt
+            )
             total_reward += self.run_episode(env, agent, print_game)
+            if epi % 10000 == 0 and epi > 0:
+                print(
+                    f"Completed {epi} episodes, avg reward so far: {total_reward/epi}"
+                )
         return total_reward / num_episodes
