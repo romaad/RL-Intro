@@ -7,6 +7,7 @@ def run_easy21() -> None:
         # NaiveAgent(),
         MCEasy21Agent(),
     ]
+    # n_episodes = 100_000  # 100k episodes
     n_episodes = 1000_000  # 1 million episodes
     runner = Runner[Easy21State, Easy21Action]()
     for agent in agents:

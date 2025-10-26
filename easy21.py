@@ -144,3 +144,6 @@ class MCEasy21Agent(MonteCarloAgent[Easy21State, Easy21Action]):
 
     def action_space(self) -> list[Easy21Action]:
         return [Easy21Action.HIT, Easy21Action.STICK]
+
+    def state_to_xy(self, s: Easy21State) -> tuple[int, int]:
+        return (s.player_sum, s.dealer_sum)

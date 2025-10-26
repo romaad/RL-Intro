@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import random
 from typing import Generic
 from base import Action, Agent, State, Step
+from plot import plot_value_function
 
 PICKLES_FOLDER = "pickles"
 
@@ -64,3 +65,16 @@ class MonteCarloAgent(Agent[State, Action]):
                 self._state.q[(s, a)] = sum(self._state.returns[(s, a)]) / len(
                     self._state.returns[(s, a)]
                 )
+
+    def state_to_xy(self, s: State) -> tuple[int, int]:
+        raise NotImplementedError
+
+    def on_train_end(self) -> None:
+        v_star = [
+            (
+                *self.state_to_xy(s),
+                max(self._state.q.get((s, a), 0.0) for a in self.action_space()),
+            )
+            for s in self._state.s_cnt.keys()
+        ]
+        plot_value_function(v_star, title="State-Value Function V* after Training")
