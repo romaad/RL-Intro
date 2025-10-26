@@ -1,24 +1,40 @@
+from dataclasses import dataclass
 import random
+from typing import Generic
 from base import Action, Agent, State, Step
+
+PICKLES_FOLDER = "pickles"
+
+
+@dataclass(frozen=True)
+class _MC_STATE(Generic[State, Action]):
+    returns: dict[tuple[State, Action], list[float]]
+    q: dict[tuple[State, Action], float]
+    s_cnt: dict[State, int]
 
 
 class MonteCarloAgent(Agent[State, Action]):
     """An agent that uses Monte Carlo methods to learn the value function."""
 
+    AGENT_STATE_T = _MC_STATE[State, Action]
+    _state: _MC_STATE[State, Action]
     EPS_CUSHION = 100
 
     def __init__(self) -> None:
-        self._returns: dict[tuple[State, Action], list[float]] = {}
-        self._Q: dict[tuple[State, Action], float] = {}
-        self._cnt_state: dict[State, int] = {}
+        self._state = _MC_STATE(
+            returns={},
+            q={},
+            s_cnt={},
+        )
 
     def action_space(self) -> list[Action]:
         raise NotImplementedError
 
     def act(self, s: State) -> Action:
         # Epsilon-greedy policy
-        cnt = self._cnt_state.get(s, 0)
-        self._cnt_state[s] = cnt + 1
+
+        cnt = self._state.s_cnt.get(s, 0)
+        self._state.s_cnt[s] = cnt + 1
         epsilon = self.EPS_CUSHION / (self.EPS_CUSHION + cnt)
         if random.uniform(0, 1) < epsilon:
             return random.choice(self.action_space())
@@ -26,7 +42,7 @@ class MonteCarloAgent(Agent[State, Action]):
             # MC ARGMAX action selection
             return max(
                 self.action_space(),
-                key=lambda a: self._Q.get((s, a), 0.0),
+                key=lambda a: self._state.q.get((s, a), 0.0),
             )
 
     def update(self, steps: list[Step[State, Action]]) -> None:
@@ -42,9 +58,9 @@ class MonteCarloAgent(Agent[State, Action]):
             curr_reward += r
             if (s, a) not in visited:
                 visited.add((s, a))
-                if (s, a) not in self._returns:
-                    self._returns[(s, a)] = []
-                self._returns[(s, a)].append(curr_reward)
-                self._Q[(s, a)] = sum(self._returns[(s, a)]) / len(
-                    self._returns[(s, a)]
+                if (s, a) not in self._state.returns:
+                    self._state.returns[(s, a)] = []
+                self._state.returns[(s, a)].append(curr_reward)
+                self._state.q[(s, a)] = sum(self._state.returns[(s, a)]) / len(
+                    self._state.returns[(s, a)]
                 )

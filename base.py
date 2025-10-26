@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import random
 from typing import Generic, TypeVar
 
+from pickle_utils import load_pickle, save_pickle
+
 
 State = TypeVar("State")
 Action = TypeVar("Action")
@@ -47,6 +49,9 @@ class Env(Generic[State, Action]):
 class Agent(Generic[State, Action]):
     """Base class for an agent."""
 
+    AGENT_STATE_T: type
+    _state: object
+
     def act(self, s: State) -> Action:
         raise NotImplementedError
 
@@ -57,6 +62,22 @@ class Agent(Generic[State, Action]):
     @property
     def name(self) -> str:
         return self.__class__.__name__
+
+    def checkpoint(self) -> None:
+        """Optional method to checkpoint the agent's state."""
+        save_pickle(self._state, f"{self.name}_checkpoint.pkl")
+
+    def restore(self) -> None:
+        """Optional method to restore the agent's state."""
+
+        self._state = load_pickle(self.name + "_checkpoint.pkl", self.AGENT_STATE_T)
+
+    def on_train_end(self) -> None:
+        """
+        Optional method called at the end of training.
+        Can be used for any final processing or cleanup or plots.
+        """
+        pass
 
 
 class Runner(Generic[State, Action]):
@@ -106,4 +127,5 @@ class Runner(Generic[State, Action]):
                 print(
                     f"Completed {epi} episodes, avg reward so far: {total_reward/epi}"
                 )
+        agent.on_train_end()
         return total_reward / num_episodes
