@@ -79,6 +79,20 @@ class Agent(Generic[State, Action]):
         """
         pass
 
+    def update_step(
+        self,
+        s: State,
+        a: Action,
+        r: float,
+        s_next: State,
+        a_next: Action,
+    ) -> None:
+        """
+        Performs the agent's update for a single step.
+        Optional as not all agents need per-step updates.
+        """
+        pass
+
 
 class Runner(Generic[State, Action]):
     """Base class for running
@@ -92,19 +106,23 @@ class Runner(Generic[State, Action]):
         print_game: bool = False,
     ) -> float:
         env.reset()
-        s = env.init_state()
+        state = env.init_state()
         done = False
         steps: list[Step[State, Action]] = [
-            Step(action=None, outcome=Outcome(s, 0.0, False))
+            Step(action=None, outcome=Outcome(state, 0.0, False))
         ]
         r = 0.0
+        action = agent.act(state)
         while not done:
-            action = agent.act(s)
-            outcome = env.step(s, action)
-            s = outcome.next_state
+            prev_state = state
+            outcome = env.step(state, action)
+            prev_action = action
+            state = outcome.next_state
             r += outcome.reward
             done = outcome.done
+            action = agent.act(state)
             steps.append(Step(action=action, outcome=outcome))
+            agent.update_step(prev_state, prev_action, outcome.reward, state, action)
         if print_game:
             print("Game history:", ",\n".join([str(step) for step in steps]))
         agent.update(steps)

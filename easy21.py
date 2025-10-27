@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import random
 
-from agents import MonteCarloAgent
+from agents.monte_carlo import MonteCarloAgent
+from agents.sarsa import SarsaAgent, SarsaLambdaAgent
 from base import Env, Outcome, Agent
 
 
@@ -139,9 +140,7 @@ class NaiveAgent(Agent[Easy21State, Easy21Action]):
             return Easy21Action.HIT
 
 
-class MCEasy21Agent(MonteCarloAgent[Easy21State, Easy21Action]):
-    """An agent that uses Monte Carlo methods to learn the value function for Easy21."""
-
+class _Eas21ControlBaseAgent:
     def action_space(self) -> list[Easy21Action]:
         return [Easy21Action.HIT, Easy21Action.STICK]
 
@@ -150,3 +149,23 @@ class MCEasy21Agent(MonteCarloAgent[Easy21State, Easy21Action]):
 
     def get_xy_labels(self) -> tuple[str, str]:
         return ("Player sum", "Dealer showing")
+
+
+class MCEasy21Agent(_Eas21ControlBaseAgent, MonteCarloAgent[Easy21State, Easy21Action]):
+    """An agent that uses Monte Carlo methods to learn the value function for Easy21."""
+
+    pass
+
+
+class SarsaEasy21Agent(_Eas21ControlBaseAgent, SarsaAgent[Easy21State, Easy21Action]):
+    """SARSA agent for Easy21 environment."""
+
+    pass
+
+
+class SarsaLambdaEasy21Agent(
+    _Eas21ControlBaseAgent, SarsaLambdaAgent[Easy21State, Easy21Action]
+):
+    """SARSA(λ) agent for Easy21 environment."""
+
+    pass
