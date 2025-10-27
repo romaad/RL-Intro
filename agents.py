@@ -69,6 +69,9 @@ class MonteCarloAgent(Agent[State, Action]):
     def state_to_xy(self, s: State) -> tuple[int, int]:
         raise NotImplementedError
 
+    def get_xy_labels(self) -> tuple[str, str]:
+        raise NotImplementedError
+
     def on_train_end(self) -> None:
         v_star = [
             (
@@ -77,4 +80,10 @@ class MonteCarloAgent(Agent[State, Action]):
             )
             for s in self._state.s_cnt.keys()
         ]
-        plot_value_function(v_star, title="State-Value Function V* after Training")
+        labelx, labely = self.get_xy_labels()
+        plot_value_function(
+            v_star,
+            title="State-Value Function V* after Training",
+            xlabel=labelx,
+            ylabel=labely,
+        )

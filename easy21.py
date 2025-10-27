@@ -147,3 +147,6 @@ class MCEasy21Agent(MonteCarloAgent[Easy21State, Easy21Action]):
 
     def state_to_xy(self, s: Easy21State) -> tuple[int, int]:
         return (s.player_sum, s.dealer_sum)
+
+    def get_xy_labels(self) -> tuple[str, str]:
+        return ("Player sum", "Dealer showing")

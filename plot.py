@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 
 
 def plot_value_function(
-    v_star: list[tuple[int, int, float]],
-    title: str = "State-Value Function V*",
+    v_star: list[tuple[int, int, float]], title: str, xlabel: str, ylabel: str
 ) -> None:
     """Plots the state-value function V* as a 3D surface plot.
 
@@ -13,31 +13,42 @@ def plot_value_function(
         v_star: A list of tuples (x, y, value) representing the state-value function.
         title: The title of the plot.
     """
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
 
     x_vals = [x for x, _, _ in v_star]
     y_vals = [y for _, y, _ in v_star]
-    z_vals = [v for _, _, v in v_star]
+    V = {(x, y): v for x, y, v in v_star}
 
-    xi = np.linspace(min(x_vals), max(x_vals), len(set(x_vals)))
-    yi = np.linspace(min(y_vals), max(y_vals), len(set(y_vals)))
-    xi, yi = np.meshgrid(xi, yi)
+    x_range = np.arange(min(x_vals), max(x_vals) + 1)
+    y_range = np.arange(min(y_vals), max(y_vals) + 1)
+    X, Y = np.meshgrid(x_range, y_range)
+    Z = np.apply_along_axis(lambda coord: V[(coord[0], coord[1])], 2, np.dstack([X, Y]))
 
-    zi = np.array(z_vals).reshape(len(set(y_vals)), len(set(x_vals)))
+    def plot_surface(
+        X: np.ndarray,
+        Y: np.ndarray,
+        Z: np.ndarray,
+        title: str,
+    ) -> None:
+        fig = plt.figure(figsize=(20, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        surf = ax.plot_surface(
+            X,
+            Y,
+            Z,
+            rstride=1,
+            cstride=1,
+            cmap=cm.coolwarm,
+            vmin=-1.0,
+            vmax=1.0,
+        )
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_zlabel("Value")
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.set_title(title)
+        ax.view_init(ax.elev, 120)
+        fig.colorbar(surf)
+        plt.show()
 
-    surf = ax.plot_surface(
-        xi,
-        yi,
-        zi,
-        cmap=cm.viridis,
-        linewidth=0,
-        antialiased=False,
-    )
-    ax.set_xlabel("Player Sum")
-    ax.set_ylabel("Dealer Sum")
-    ax.set_zlabel("V* Value")
-    ax.set_title(title)
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-
-    plt.show(block=True)
+    plot_surface(X, Y, Z, title)
