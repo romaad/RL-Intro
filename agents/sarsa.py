@@ -1,8 +1,9 @@
 from agents.monte_carlo import MonteCarloAgent
-from base import Action, Agent, State, Step
+from agents.q_agent import QAgent
+from base import Action, State, Step
 
 
-class SarsaAgent(MonteCarloAgent[State, Action]):
+class SarsaAgent(QAgent[State, Action]):
     """
     SARSA agent
     The idea is similar to Monte Carlo, but we update the Q-values
@@ -31,13 +32,17 @@ class SarsaAgent(MonteCarloAgent[State, Action]):
         a_next: Action,
     ) -> None:
         """Performs the SARSA Q-value update for a single step."""
-        q_sa = self._state.q.get((s, a), 0.0)
-        q_snext_anext = self._state.q.get((s_next, a_next), 0.0)
+        q_sa = self.q_value(s, a)
+        q_snext_anext = self.q_value(s_next, a_next)
         # use alpha = 1/N(s,a) as in MC agent
-        alpha = 1.0 / (len(self._state.returns.get((s, a), [0])))
+        alpha = self.get_variable_learning_rate(s, a)
         # SARSA update rule
         q_sa_new = q_sa + alpha * (r + self._gamma * q_snext_anext - q_sa)
-        self._state.q[(s, a)] = q_sa_new
+        self.update_q_value(s, a, q_sa_new)
+
+    def update(self, steps: list[Step[State, Action]]) -> None:
+        """No-op: all updates are done in update_step."""
+        pass
 
 
 class SarsaLambdaAgent(SarsaAgent[State, Action]):
@@ -69,10 +74,10 @@ class SarsaLambdaAgent(SarsaAgent[State, Action]):
         a_next: Action,
     ) -> None:
         """Performs the SARSA(λ) Q-value update for a single step."""
-        q_sa = self._state.q.get((s, a), 0.0)
-        q_snext_anext = self._state.q.get((s_next, a_next), 0.0)
+        q_sa = self.q_value(s, a)
+        q_snext_anext = self.q_value(s_next, a_next)
         # use alpha = 1/N(s,a) as in MC agent
-        alpha = 1.0 / (len(self._state.returns.get((s, a), [0])))
+        alpha = self.get_variable_learning_rate(s, a)
 
         # update eligibility trace
         self._eligibility[(s, a)] = self._eligibility.get((s, a), 0.0) + 1.0
@@ -82,8 +87,8 @@ class SarsaLambdaAgent(SarsaAgent[State, Action]):
 
         # update Q-values for all state-action pairs
         for (s_e, a_e), e_trace in self._eligibility.items():
-            q_e = self._state.q.get((s_e, a_e), 0.0)
+            q_e = self.q_value(s_e, a_e)
             q_e_new = q_e + alpha * delta * e_trace
-            self._state.q[(s_e, a_e)] = q_e_new
+            self.update_q_value(s_e, a_e, q_e_new)
             # decay eligibility trace
             self._eligibility[(s_e, a_e)] = self._gamma * self._lambda * e_trace

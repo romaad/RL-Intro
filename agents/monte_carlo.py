@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-import random
 from typing import Generic
-from base import Action, Agent, State, Step
-from plot import plot_value_function
+from agents.q_agent import QAgent
+from base import Action, State, Step
 
 PICKLES_FOLDER = "pickles"
 
@@ -14,12 +13,12 @@ class _MC_STATE(Generic[State, Action]):
     s_cnt: dict[State, int]
 
 
-class MonteCarloAgent(Agent[State, Action]):
+class MonteCarloAgent(QAgent[State, Action]):
     """An agent that uses Monte Carlo methods to learn the value function."""
 
     AGENT_STATE_T = _MC_STATE[State, Action]
     _state: _MC_STATE[State, Action]
-    EPS_CUSHION = 100
+    EPS_CUSHION: int = 100
 
     def __init__(self) -> None:
         self._state = _MC_STATE(
@@ -28,23 +27,30 @@ class MonteCarloAgent(Agent[State, Action]):
             s_cnt={},
         )
 
-    def action_space(self) -> list[Action]:
-        raise NotImplementedError
-
-    def act(self, s: State) -> Action:
-        # Epsilon-greedy policy
-
+    def visit(self, s: State) -> None:
         cnt = self._state.s_cnt.get(s, 0)
         self._state.s_cnt[s] = cnt + 1
-        epsilon = self.EPS_CUSHION / (self.EPS_CUSHION + cnt)
-        if random.uniform(0, 1) < epsilon:
-            return random.choice(self.action_space())
-        else:
-            # MC ARGMAX action selection
-            return max(
-                self.action_space(),
-                key=lambda a: self._state.q.get((s, a), 0.0),
+
+    def get_epsilon(self, s: State) -> float:
+        return self.EPS_CUSHION / (self.EPS_CUSHION + self._state.s_cnt.get(s, 0))
+
+    def q_value(self, s: State, a: Action) -> float:
+        return self._state.q.get((s, a), 0.0)
+
+    def update_q_value(self, s: State, a: Action, value: float) -> None:
+        self._state.q[(s, a)] = value
+
+    def get_variable_learning_rate(self, s: State, a: Action | None) -> float:
+        if a is None:
+            return 1.0 / len(self._state.returns.get((s, a), [0]))
+        return 1.0 / (
+            sum(
+                len(self._state.returns.get((s, aa), [0])) for aa in self.action_space()
             )
+        )
+
+    def get_states(self) -> list[State]:
+        return list(self._state.s_cnt.keys())
 
     def update(self, steps: list[Step[State, Action]]) -> None:
         curr_reward = 0.0
@@ -65,25 +71,3 @@ class MonteCarloAgent(Agent[State, Action]):
                 self._state.q[(s, a)] = sum(self._state.returns[(s, a)]) / len(
                     self._state.returns[(s, a)]
                 )
-
-    def state_to_xy(self, s: State) -> tuple[int, int]:
-        raise NotImplementedError
-
-    def get_xy_labels(self) -> tuple[str, str]:
-        raise NotImplementedError
-
-    def on_train_end(self) -> None:
-        v_star = [
-            (
-                *self.state_to_xy(s),
-                max(self._state.q.get((s, a), 0.0) for a in self.action_space()),
-            )
-            for s in self._state.s_cnt.keys()
-        ]
-        labelx, labely = self.get_xy_labels()
-        plot_value_function(
-            v_star,
-            title="State-Value Function V* after Training",
-            xlabel=labelx,
-            ylabel=labely,
-        )

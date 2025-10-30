@@ -8,9 +8,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import random
 
-from agents.monte_carlo import MonteCarloAgent
-from agents.sarsa import SarsaAgent, SarsaLambdaAgent
-from base import Env, Outcome, Agent
+from base import Env, Outcome
 
 
 class _Color(Enum):
@@ -50,6 +48,7 @@ def random_card(color: _Color | None = None) -> Card:
 class Easy21State:
     player_sum: int
     dealer_sum: int
+    dealer_first_card: int = 0
     is_terminal: bool = False
 
     def __str__(self) -> str:
@@ -67,7 +66,9 @@ class Easy21Env(Env[Easy21State, Easy21Action]):
         dealer_card = self.draw_card(_Color.BLACK)
         player_card = self.draw_card(_Color.BLACK)
         return Easy21State(
-            player_sum=player_card.value(), dealer_sum=dealer_card.value()
+            player_sum=player_card.value(),
+            dealer_sum=dealer_card.value(),
+            dealer_first_card=dealer_card.value(),
         )
 
     def draw_card(self, color: _Color | None = None) -> Card:
@@ -129,43 +130,3 @@ class Easy21Env(Env[Easy21State, Easy21Action]):
 
         else:
             raise ValueError("Invalid action")
-
-
-class NaiveAgent(Agent[Easy21State, Easy21Action]):
-
-    def act(self, s: Easy21State) -> Easy21Action:
-        if s.player_sum >= 20:
-            return Easy21Action.STICK
-        else:
-            return Easy21Action.HIT
-
-
-class _Eas21ControlBaseAgent:
-    def action_space(self) -> list[Easy21Action]:
-        return [Easy21Action.HIT, Easy21Action.STICK]
-
-    def state_to_xy(self, s: Easy21State) -> tuple[int, int]:
-        return (s.player_sum, s.dealer_sum)
-
-    def get_xy_labels(self) -> tuple[str, str]:
-        return ("Player sum", "Dealer showing")
-
-
-class MCEasy21Agent(_Eas21ControlBaseAgent, MonteCarloAgent[Easy21State, Easy21Action]):
-    """An agent that uses Monte Carlo methods to learn the value function for Easy21."""
-
-    pass
-
-
-class SarsaEasy21Agent(_Eas21ControlBaseAgent, SarsaAgent[Easy21State, Easy21Action]):
-    """SARSA agent for Easy21 environment."""
-
-    pass
-
-
-class SarsaLambdaEasy21Agent(
-    _Eas21ControlBaseAgent, SarsaLambdaAgent[Easy21State, Easy21Action]
-):
-    """SARSA(λ) agent for Easy21 environment."""
-
-    pass

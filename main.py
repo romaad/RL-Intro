@@ -1,15 +1,17 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Generator, Sequence
+from typing import Sequence
 from base import Agent, Runner
-from easy21 import (
+from easy21.easy21 import (
     Easy21Env,
     Easy21State,
     Easy21Action,
+)
+from easy21.easy21_agents import (
     MCEasy21Agent,
-    NaiveAgent,
     SarsaEasy21Agent,
     SarsaLambdaEasy21Agent,
+    SarsaLambdaEasy21LinearApproxAgent,
 )
 from plot import turn_plot_off
 from utils import drange
@@ -24,14 +26,21 @@ class _Args:
 
 
 def run_easy21(args: _Args) -> None:
-    agents: Sequence[Agent[Easy21State, Easy21Action]] = [
-        # NaiveAgent(),
-        MCEasy21Agent(),
-        SarsaEasy21Agent(),
-    ] + [
-        SarsaLambdaEasy21Agent(lambbda=lamb, gamma=1.0)
-        for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.1)))
-    ]
+    agents: Sequence[Agent[Easy21State, Easy21Action]] = (
+        [
+            # NaiveAgent(),
+            MCEasy21Agent(),
+            SarsaEasy21Agent(),
+        ]
+        + [
+            SarsaLambdaEasy21Agent(lambbda=lamb, gamma=1.0)
+            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.1)))
+        ]
+        + [
+            SarsaLambdaEasy21LinearApproxAgent(lambbda=lamb, gamma=1.0)
+            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.1)))
+        ]
+    )
     # n_episodes = 10_000  # 10k episodes
     # n_episodes = 100_000  # 100k episodes
     # n_episodes = 1000_000  # 1 million episodes

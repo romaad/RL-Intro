@@ -79,6 +79,10 @@ class Agent(Generic[State, Action]):
         """
         pass
 
+    def get_variable_learning_rate(self, s: State, a: Action | None) -> float:
+        """Optional method to get the learning rate for a given state and action."""
+        return 0.1
+
     def update_step(
         self,
         s: State,
