@@ -51,6 +51,7 @@ class Agent(Generic[State, Action]):
 
     AGENT_STATE_T: type
     _state: object
+    PICKLE_PATH: str = "agents_pickes"
 
     def act(self, s: State) -> Action:
         raise NotImplementedError
@@ -65,12 +66,14 @@ class Agent(Generic[State, Action]):
 
     def checkpoint(self) -> None:
         """Optional method to checkpoint the agent's state."""
-        save_pickle(self._state, f"{self.name}_checkpoint.pkl")
+        save_pickle(self._state, f"{self.PICKLE_PATH}/{self.name}_checkpoint.pkl")
 
     def restore(self) -> None:
         """Optional method to restore the agent's state."""
 
-        self._state = load_pickle(self.name + "_checkpoint.pkl", self.AGENT_STATE_T)
+        self._state = load_pickle(
+            self.PICKLE_PATH + "/" + self.name + "_checkpoint.pkl", self.AGENT_STATE_T
+        )
 
     def on_train_end(self) -> None:
         """

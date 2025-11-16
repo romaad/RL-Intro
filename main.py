@@ -53,6 +53,8 @@ def run_easy21(args: _Args) -> None:
         print(f"Running agent: {agent.name}")
         r = runner.run_episodes(env, agent, args.episodes, record_cnt=args.record_cnt)
         print(f"Avg reward {agent.name} over {args.episodes} episodes: {r}")
+        print("Storing agent data")
+        agent.checkpoint()
 
 
 def create_parser():

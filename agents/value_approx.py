@@ -3,6 +3,8 @@ from agents.q_agent import QAgent
 from base import Action, State
 import numpy as np
 
+from pickle_utils import save_pickle
+
 
 class ValueApproximator(Generic[State, Action]):
     """An abstract base class for value function approximators."""
@@ -52,6 +54,9 @@ class LinearValueApproximator(ValueApproximator[State, Action]):
             (error * features) * self._alpha * features
         )  # Simple gradient descent update
 
+    def get_state(self) -> object:
+        return self._weights.copy()
+
 
 class LinearApproxAgent(QAgent[State, Action]):
     """An agent that uses linear function approximation for value function."""
@@ -75,3 +80,11 @@ class LinearApproxAgent(QAgent[State, Action]):
 
     def get_epsilon(self, s: State) -> float:
         return self._epsilon
+
+    def get_state(self) -> object:
+        return self._approximator.get_state()
+
+    def checkpoint(self) -> None:
+        save_pickle(
+            self.get_state(), f"{self.PICKLE_PATH}/{self.name}_w_checkpoint.pkl"
+        )
