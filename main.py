@@ -34,11 +34,11 @@ def run_easy21(args: _Args) -> None:
         ]
         + [
             SarsaLambdaEasy21Agent(lambbda=lamb, gamma=1.0)
-            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.1)))
+            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.4)))
         ]
         + [
             SarsaLambdaEasy21LinearApproxAgent(lambbda=lamb, gamma=1.0)
-            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.1)))
+            for lamb in list(drange(Decimal(0.0), Decimal(1.1), Decimal(0.4)))
         ]
     )
     # n_episodes = 10_000  # 10k episodes

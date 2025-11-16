@@ -25,6 +25,13 @@ class _Eas21ControlBaseAgent:
     def get_xy_labels(self) -> tuple[str, str]:
         return ("Player sum", "Dealer showing")
 
+    def get_states(self) -> list[Easy21State]:
+        states: list[Easy21State] = []
+        for player_sum in range(1, 22):
+            for dealer_sum in range(1, 11):
+                states.append(Easy21State(player_sum=player_sum, dealer_sum=dealer_sum))
+        return states
+
 
 class MCEasy21Agent(_Eas21ControlBaseAgent, MonteCarloAgent[Easy21State, Easy21Action]):
     """An agent that uses Monte Carlo methods to learn the value function for Easy21."""
@@ -70,6 +77,11 @@ class SarsaLambdaEasy21LinearApproxAgent(
 ):
     """SARSA(λ) agent for Easy21 environment with linear function approximation."""
 
+    @property
+    def name(self) -> str:
+        return f"SarsaLinearApprox(λ={self._lambda})"
+
     def __init__(self, lambbda: float, gamma: float) -> None:
+        _Eas21ControlBaseAgent.__init__(self)
         LinearApproxAgent.__init__(self, value_approximator=Easy21LinearValueApprox())
         SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)

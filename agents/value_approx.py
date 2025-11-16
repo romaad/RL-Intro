@@ -57,14 +57,21 @@ class LinearApproxAgent(QAgent[State, Action]):
     """An agent that uses linear function approximation for value function."""
 
     _approximator: LinearValueApproximator[State, Action]
+    _epsilon: float  # exploration rate
 
     def __init__(
-        self, value_approximator: LinearValueApproximator[State, Action]
+        self,
+        value_approximator: LinearValueApproximator[State, Action],
+        epsilon: float = 0.05,
     ) -> None:
         self._approximator = value_approximator
+        self._epsilon = epsilon
 
     def q_value(self, s: State, a: Action) -> float:
         return self._approximator.predict(s, a)
 
     def update_q_value(self, s: State, a: Action, value: float) -> None:
         self._approximator.update(s, a, value)
+
+    def get_epsilon(self, s: State) -> float:
+        return self._epsilon
