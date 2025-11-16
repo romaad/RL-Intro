@@ -7,6 +7,7 @@ from pickle_utils import load_pickle, save_pickle
 
 State = TypeVar("State")
 Action = TypeVar("Action")
+PartialState = TypeVar("PartialState")
 
 
 @dataclass
@@ -40,6 +41,21 @@ class Env(Generic[State, Action]):
         return self.step_impl(s, action)
 
     def step_impl(self, s: State, action: Action) -> Outcome[State]:
+        raise NotImplementedError
+
+    def init_state(self) -> State:
+        raise NotImplementedError
+
+
+class MultipleAgentEnv(Env[State, list[Action]], Generic[State, Action, PartialState]):
+    """Base class for an environment with multiple agents."""
+
+    def step_impl(self, s: State, action: list[Action]) -> Outcome[State]:
+        raise NotImplementedError
+
+    def agent_step(
+        self, agent_idx: int, s: State, action: Action
+    ) -> Outcome[PartialState]:
         raise NotImplementedError
 
     def init_state(self) -> State:
