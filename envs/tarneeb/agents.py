@@ -28,6 +28,12 @@ class RandomTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
         else:
             # Must play a card from holding
             if s.holding_cards:
+                # Follow suit if possible
+                if len(s.played_cards) > 0:
+                    led_suit = s.played_cards[0].suit
+                    led_suit_cards = [c for c in s.holding_cards if c.suit == led_suit]
+                    if led_suit_cards:
+                        return random.choice(led_suit_cards)
                 return random.choice(s.holding_cards)
             else:
                 # No cards left, but shouldn't happen
@@ -61,7 +67,7 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
         )
         print(f"Trump suit: {s.trump_suit}")
         print(f"Score: {s.score}")
-        print(f"Round score: {s.round_score}")
+        print(f"Round: {s.round_num}, Round score: {s.round_score}")
         if s.double_by is not None:
             print(f"Doubled by P{s.double_by}")
         if not s.trump_suit:
@@ -129,6 +135,15 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
                         number = int(number_str)
                     card = DeckCard(suit_map[suit_char], number)
                     if card in s.holding_cards:
+                        # Check follow suit
+                        if len(s.played_cards) > 0:
+                            led_suit = s.played_cards[0].suit
+                            has_led_suit = any(
+                                c.suit == led_suit for c in s.holding_cards
+                            )
+                            if has_led_suit and card.suit != led_suit:
+                                print("You must follow suit!")
+                                return self.act(s)
                         return card
                     else:
                         print("You don't have that card!")

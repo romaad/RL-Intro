@@ -142,7 +142,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         last_player: int,
         played_cards: list[DeckCard],
         trump_suit: Suit | None,
-    ) -> tuple[int, int]:
+    ) -> tuple[int, tuple[int, int]]:
         # The max card score wins the round, if there's a trump suit, trump cards beat others
         # it takes precedence over non-trump cards
         winning_card = played_cards[0]
@@ -156,12 +156,12 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 and winning_card.suit != trump_suit
             ):
                 winning_card = card
-                winning_player_idx = (last_player - i) % 4
+                winning_player_idx = ((last_player - 3) + i) % 4
         # winning player gets a point for their team
         if winning_player_idx % 2 == 0:
-            return (1, 0)
+            return winning_player_idx, (1, 0)
         else:
-            return (0, 1)
+            return winning_player_idx, (0, 1)
 
     def _calc_reward(self, round_score: tuple[int, int]) -> list[float]:
         return [
@@ -310,12 +310,25 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         # playing a card
         new_holding = s.holding_cards.copy()
         new_holding[agent_idx].remove(played_card)
+        # Check follow suit rule
+        if len(s.played_cards) > 0:
+            led_suit = s.played_cards[0].suit
+            has_led_suit = any(c.suit == led_suit for c in s.holding_cards[agent_idx])
+            if has_led_suit and played_card.suit != led_suit:
+                return self._invalid_move_outcome(s, agent_idx)
         played_cards = s.played_cards + [played_card]
         if len(played_cards) % 4 == 0:
             # A hand is over
-            hand_score = self._calc_score(agent_idx, played_cards, s.trump_suit)
+            hand_winner, hand_score = self._calc_score(
+                agent_idx, played_cards, s.trump_suit
+            )
+            hand_info = []
+            starting_player = (agent_idx - 3) % 4
+            for i, card in enumerate(played_cards):
+                player = (starting_player + i) % 4
+                hand_info.append(f"P{player}: {card}")
             print(
-                f"Hand completed: {[str(c) for c in played_cards]} - Won by team {hand_score.index(1)}"
+                f"Hand completed: {', '.join(hand_info)} - Won by P{hand_winner} (team {hand_score.index(1)})"
             )
             new_state = replace(
                 s,
@@ -352,7 +365,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 next_state=new_state,
                 reward_per_agent=self._no_reward(),
                 done=False,
-                next_agent_idx=agent_idx,
+                next_agent_idx=hand_winner,
             )
         else:
             # continue the round
