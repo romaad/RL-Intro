@@ -14,7 +14,7 @@ from easy21.easy21_agents import (
     SarsaLambdaEasy21LinearApproxAgent,
 )
 from envs.tarneeb.env import TarneebEnv, PartialTarneebState, TarneebAction, TarneebSate
-from envs.tarneeb.agents import RandomTarneebAgent
+from envs.tarneeb.agents import RandomTarneebAgent, HumanTarneebAgent
 from plot import turn_plot_off
 from utils import drange
 import argparse
@@ -25,6 +25,8 @@ class _Args:
     episodes: int
     record_cnt: int
     show_plot: bool
+    mode: str
+    human_players: int
 
 
 def run_easy21(args: _Args) -> None:
@@ -60,20 +62,35 @@ def run_easy21(args: _Args) -> None:
 
 
 def run_tarneeb(args: _Args) -> None:
-    agents: Sequence[Agent[PartialTarneebState, TarneebAction]] = [
-        RandomTarneebAgent() for _ in range(4)
-    ]
-    # For now, simple random agents
+    agents: list[Agent[PartialTarneebState, TarneebAction]] = []
+    for _ in range(args.human_players):
+        agents.append(HumanTarneebAgent())
+    for _ in range(4 - args.human_players):
+        agent = RandomTarneebAgent()
+        agent.env_name = "tarneeb"
+        if args.mode == "play":
+            try:
+                agent.restore()
+                print(f"Loaded saved state for {agent.name}")
+            except FileNotFoundError:
+                print(f"No saved state found for {agent.name}, using fresh agent")
+        agents.append(agent)
+    for agent in agents:
+        agent.env_name = "tarneeb"
     runner = MultiAgentRunner[TarneebSate, PartialTarneebState, TarneebAction]()
     if not args.show_plot:
         turn_plot_off()
     env = TarneebEnv()
     avg_rewards = runner.run_episodes(
-        env, list(agents), args.episodes, record_cnt=args.record_cnt
+        env, agents, args.episodes, record_cnt=args.record_cnt
     )
     print(
         f"Avg rewards for Tarneeb agents over {args.episodes} episodes: {avg_rewards}"
     )
+    if args.mode == "train":
+        for agent in agents:
+            if isinstance(agent, RandomTarneebAgent):
+                agent.checkpoint()
 
 
 def create_parser():
@@ -84,6 +101,19 @@ def create_parser():
         default="easy21",
         choices=["easy21", "tarneeb"],
         help="The game/environment to run agents on.",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="train",
+        choices=["train", "play"],
+        help="Mode: train to train agents, play to load saved agents and run.",
+    )
+    parser.add_argument(
+        "--human-players",
+        type=int,
+        default=0,
+        help="Number of human players (for play mode).",
     )
     parser.add_argument(
         "--episodes",
@@ -114,6 +144,8 @@ def main() -> None:
         episodes=args.episodes,
         record_cnt=args.record_cnt,
         show_plot=args.show_plot,
+        mode=args.mode,
+        human_players=args.human_players,
     )
     if args.game == "easy21":
         run_easy21(args_dataclass)
