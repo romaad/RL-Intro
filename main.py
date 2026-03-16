@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Sequence
-from base import Agent, Runner
+from base import Agent, Runner, MultiAgentRunner
 from easy21.easy21 import (
     Easy21Env,
     Easy21State,
@@ -13,6 +13,8 @@ from easy21.easy21_agents import (
     SarsaLambdaEasy21Agent,
     SarsaLambdaEasy21LinearApproxAgent,
 )
+from envs.tarneeb.env import TarneebEnv, PartialTarneebState, TarneebAction, TarneebSate
+from envs.tarneeb.agents import RandomTarneebAgent
 from plot import turn_plot_off
 from utils import drange
 import argparse
@@ -57,9 +59,31 @@ def run_easy21(args: _Args) -> None:
         agent.checkpoint()
 
 
+def run_tarneeb(args: _Args) -> None:
+    agents: Sequence[Agent[PartialTarneebState, TarneebAction]] = [
+        RandomTarneebAgent() for _ in range(4)
+    ]
+    # For now, simple random agents
+    runner = MultiAgentRunner[TarneebSate, PartialTarneebState, TarneebAction]()
+    if not args.show_plot:
+        turn_plot_off()
+    env = TarneebEnv()
+    avg_rewards = runner.run_episodes(
+        env, list(agents), args.episodes, record_cnt=args.record_cnt
+    )
+    print(
+        f"Avg rewards for Tarneeb agents over {args.episodes} episodes: {avg_rewards}"
+    )
+
+
 def create_parser():
-    parser = argparse.ArgumentParser(
-        description="Run RL agents on the Easy21 environment."
+    parser = argparse.ArgumentParser(description="Run RL agents on environments.")
+    parser.add_argument(
+        "--game",
+        type=str,
+        default="easy21",
+        choices=["easy21", "tarneeb"],
+        help="The game/environment to run agents on.",
     )
     parser.add_argument(
         "--episodes",
@@ -91,7 +115,10 @@ def main() -> None:
         record_cnt=args.record_cnt,
         show_plot=args.show_plot,
     )
-    run_easy21(args_dataclass)
+    if args.game == "easy21":
+        run_easy21(args_dataclass)
+    elif args.game == "tarneeb":
+        run_tarneeb(args_dataclass)
 
 
 if __name__ == "__main__":

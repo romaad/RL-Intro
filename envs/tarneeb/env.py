@@ -1,5 +1,6 @@
 from dataclasses import dataclass, replace
 from enum import Enum
+import random
 
 from base import MultiAgentOutcome, MultipleAgentEnv
 from utils import none_throws
@@ -100,9 +101,19 @@ def next_agent(current_agent_idx: int) -> int:
 
 class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebAction]):
 
+    def _create_deck(self) -> list[DeckCard]:
+        deck = []
+        for suit in Suit:
+            for num in range(1, 14):
+                deck.append(DeckCard(suit, num))
+        return deck
+
     def __init__(self) -> None:
         self.reset()
         super().__init__()
+
+    def reset(self) -> None:
+        pass
 
     def _no_reward(self) -> list[float]:
         return [0.0, 0.0, 0.0, 0.0]
@@ -142,6 +153,9 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         return [
             float(num) for num in list(round_score) * 2
         ]  # each team has two players
+
+    def _calc_round_score(self, s: TarneebSate) -> tuple[int, int]:
+        return (s.score[0] + s.round_score[0], s.score[1] + s.round_score[1])
 
     def _invalid_move_outcome(
         self, s: TarneebSate, agent_idx: int
@@ -208,7 +222,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
                     done=False,
-                    next_agent_idx=none_throws(s.last_player_idx),
+                    next_agent_idx=next_agent(agent_idx),
                 )
             # can't double before suit is selected
             return self._invalid_move_outcome(s, agent_idx)
@@ -247,7 +261,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 round_score = self._calc_round_score(new_state)
                 reward_per_player = self._calc_reward(round_score)
 
-                if any(player_score >= GAME_OVER_SCORE for player_score in score):
+                if any(team_score >= GAME_OVER_SCORE for team_score in round_score):
                     # game over
                     return MultiAgentOutcome(
                         next_state=new_state,
@@ -257,7 +271,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                     )
                 # start new round
                 new_state = replace(
-                    self.init_state(), score=score, round_num=s.round_num + 1
+                    self.init_state(), score=round_score, round_num=s.round_num + 1
                 )
                 return MultiAgentOutcome(
                     next_state=new_state,
@@ -317,9 +331,12 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         return self.play_card(s, action, agent_idx)
 
     def init_state(self) -> TarneebSate:
+        deck = self._create_deck()
+        random.shuffle(deck)
+        holding_cards = [deck[i * 13 : (i + 1) * 13] for i in range(4)]
         return TarneebSate(
             played_cards=[],
-            holding_cards=[],
+            holding_cards=holding_cards,
             trump_suit=None,
             suit_selected=False,
             passes_count=0,

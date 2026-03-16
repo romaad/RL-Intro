@@ -175,12 +175,6 @@ class Runner(Generic[State, Action]):
         return total_reward / num_episodes
 
 
-class NotSupportedError(Exception):
-    """Exception raised for unsupported operations in the environment."""
-
-    pass
-
-
 class MultipleAgentEnv(Env[State, list[Action]], Generic[State, PartialState, Action]):
     """Base class for an environment with multiple agents."""
 
@@ -197,3 +191,71 @@ class MultipleAgentEnv(Env[State, list[Action]], Generic[State, PartialState, Ac
 
     def step_impl(self, s: State, action: list[Action]) -> Outcome[State]:
         raise NotSupportedError("Use agent_step for multi-agent environments.")
+
+
+class MultiAgentRunner(Generic[State, PartialState, Action]):
+    """Base class for running multiple agents in a multi-agent environment."""
+
+    def run_episode(
+        self,
+        env: MultipleAgentEnv[State, PartialState, Action],
+        agents: list[Agent[PartialState, Action]],
+        print_game: bool = False,
+    ) -> list[float]:
+        env.reset()
+        state = env.init_state()
+        done = False
+        agent_idx = 0  # start with agent 0
+        total_rewards = [0.0] * len(agents)
+        steps_per_agent: list[list[Step[PartialState, Action]]] = [[] for _ in agents]
+        while not done:
+            partial_state = env.to_partial_state(state, agent_idx)
+            action = agents[agent_idx].act(partial_state)
+            outcome = env.agent_step(state, action, agent_idx)
+            reward = outcome.reward_per_agent[agent_idx]
+            total_rewards[agent_idx] += reward
+            state = outcome.next_state
+            done = outcome.done
+            agent_idx = outcome.next_agent_idx
+            # For simplicity, update each agent with their own steps
+            prev_partial_state = partial_state
+            steps_per_agent[agent_idx].append(
+                Step(action=action, outcome=Outcome(state, reward, done))
+            )
+            agents[agent_idx].update_step(
+                prev_partial_state, action, reward, partial_state, action
+            )
+        if print_game:
+            for i, steps in enumerate(steps_per_agent):
+                print(f"Agent {i} history:", ",\n".join([str(step) for step in steps]))
+        for agent, steps in zip(agents, steps_per_agent):
+            agent.update(steps)
+        return total_rewards
+
+    def run_episodes(
+        self,
+        env: MultipleAgentEnv[State, PartialState, Action],
+        agents: list[Agent[PartialState, Action]],
+        num_episodes: int,
+        record_cnt: int = 0,
+    ) -> list[float]:
+        total_rewards = [0.0] * len(agents)
+        for epi in range(num_episodes):
+            print_game = (
+                record_cnt > 0 and random.randint(1, num_episodes) <= record_cnt
+            )
+            episode_rewards = self.run_episode(env, agents, print_game)
+            for i in range(len(agents)):
+                total_rewards[i] += episode_rewards[i]
+            if epi % 10000 == 0 and epi > 0:
+                avg_rewards = [total / (epi + 1) for total in total_rewards]
+                print(f"Completed {epi} episodes, avg rewards so far: {avg_rewards}")
+        for agent in agents:
+            agent.on_train_end()
+        return [total / num_episodes for total in total_rewards]
+
+
+class NotSupportedError(Exception):
+    """Exception raised for unsupported operations in the environment."""
+
+    pass
