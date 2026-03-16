@@ -26,7 +26,8 @@ class DeckCard:
     _number: int
 
     def __str__(self) -> str:
-        return f"{self._suit.value.abbv}{self.number}"
+        face = {11: "J", 12: "Q", 13: "K"}.get(self._number, str(self._number))
+        return f"{self._suit.value.abbv}{face}"
 
     def value(self) -> int:
         return self._number

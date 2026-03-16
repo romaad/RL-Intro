@@ -39,15 +39,21 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
 
     def act(self, s: PartialTarneebState) -> TarneebAction:
         print(f"\nYour turn!")
-        print(f"Played cards: {[str(c) for c in s.played_cards]}")
-        print(f"Your cards: {[str(c) for c in s.holding_cards]}")
+        print(
+            f"Played cards: {[str(c) for c in sorted(s.played_cards, key=lambda c: (c.suit.value.value, -c._number))]}"
+        )
+        print(
+            f"Your cards: {[str(c) for c in sorted(s.holding_cards, key=lambda c: (c.suit.value.value, -c._number))]}"
+        )
         print(f"Trump suit: {s.trump_suit}")
         print(f"Score: {s.score}")
         print(f"Round score: {s.round_score}")
         if s.double_by is not None:
             print(f"Doubled by player {s.double_by}")
         action_str = (
-            input("Enter action (suit: H/D/C/S, card: e.g. H5, PASS, DOUBLE): ")
+            input(
+                "Enter action (suit: H/D/C/S, card: e.g. H5, HJ, CQ, DK or 5H, PASS, DOUBLE): "
+            )
             .strip()
             .upper()
         )
@@ -70,11 +76,23 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
 
         # Parse card
         if len(action_str) >= 2:
-            suit_char = action_str[0]
-            number_str = action_str[1:]
-            if suit_char in suit_map:
+            first = action_str[0]
+            rest = action_str[1:]
+            suit_char = None
+            number_str = None
+            if first in suit_map:
+                suit_char = first
+                number_str = rest
+            elif len(rest) > 0 and rest[-1] in suit_map:
+                suit_char = rest[-1]
+                number_str = first + rest[:-1]
+            if suit_char and number_str:
+                face_to_num = {"J": 11, "Q": 12, "K": 13}
                 try:
-                    number = int(number_str)
+                    if number_str in face_to_num:
+                        number = face_to_num[number_str]
+                    else:
+                        number = int(number_str)
                     card = DeckCard(suit_map[suit_char], number)
                     if card in s.holding_cards:
                         return card
