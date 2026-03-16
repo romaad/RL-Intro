@@ -1,5 +1,12 @@
 from base import Agent
-from .env import PartialTarneebState, TarneebAction, TarneebGameActions, Suit, DeckCard
+from .env import (
+    PartialTarneebState,
+    TarneebAction,
+    TarneebGameActions,
+    Suit,
+    DeckCard,
+    BidAction,
+)
 import random
 
 
@@ -10,17 +17,13 @@ class RandomTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
         self._state = None  # No state to save for random agent
 
     def act(self, s: PartialTarneebState) -> TarneebAction:
-        # If suit not selected, choose a random action: suit or pass/double
+        # If suit not selected, bidding phase
         if not s.trump_suit:
-            # Can select suit or pass/double
-            actions = [
-                Suit.HEARTS,
-                Suit.DIAMONDS,
-                Suit.CLUBS,
-                Suit.SPADES,
-                TarneebGameActions.PASS,
-                TarneebGameActions.DOUBLE,
-            ]
+            # Can bid higher than current_high_bid (7-13), or pass
+            actions = [TarneebGameActions.PASS]
+            for bid in range(s.current_high_bid + 1, 14):
+                for suit in Suit:
+                    actions.append(BidAction(bid, suit))
             return random.choice(actions)
         else:
             # Must play a card from holding
@@ -50,13 +53,23 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
         print(f"Round score: {s.round_score}")
         if s.double_by is not None:
             print(f"Doubled by player {s.double_by}")
-        action_str = (
-            input(
-                "Enter action (suit: H/D/C/S, card: e.g. H5, HJ, CQ, DK or 5H, PASS, DOUBLE): "
+        if not s.trump_suit:
+            print(f"Current high bid: {s.current_high_bid}")
+            if s.bidder is not None:
+                print(f"Current bidder: {s.bidder}")
+            action_str = (
+                input("Enter action (PASS, BID <7-13> <suit: H/D/C/S>): ")
+                .strip()
+                .upper()
             )
-            .strip()
-            .upper()
-        )
+        else:
+            action_str = (
+                input(
+                    "Enter action (suit: H/D/C/S, card: e.g. H5, HJ, CQ, DK or 5H, PASS, DOUBLE): "
+                )
+                .strip()
+                .upper()
+            )
 
         # Parse suit
         suit_map = {
@@ -73,7 +86,17 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
             return TarneebGameActions.PASS
         if action_str == "DOUBLE":
             return TarneebGameActions.DOUBLE
-
+        # Parse bid
+        if action_str.startswith("BID "):
+            parts = action_str[4:].split()
+            if len(parts) == 2:
+                try:
+                    bid = int(parts[0])
+                    suit = suit_map.get(parts[1])
+                    if 7 <= bid <= 13 and suit:
+                        return BidAction(bid, suit)
+                except ValueError:
+                    pass
         # Parse card
         if len(action_str) >= 2:
             first = action_str[0]

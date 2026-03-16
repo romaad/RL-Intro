@@ -52,6 +52,12 @@ class TarneebGameActions(Enum):
 
 
 @dataclass(frozen=True)
+class BidAction:
+    value: int
+    suit: Suit
+
+
+@dataclass(frozen=True)
 class TarneebSate:
     # previously played cards in the current round
     played_cards: list[DeckCard]
@@ -68,6 +74,10 @@ class TarneebSate:
     last_player_idx: int | None
     # score to track the round score
     round_score: tuple[int, int]
+    # bidding
+    current_high_bid: int
+    bidder: int | None
+    bids: list[tuple[int, Suit] | None]
 
     def __str__(self) -> str:
         return (
@@ -86,13 +96,15 @@ class PartialTarneebState:
     score: tuple[int, int]
     round_num: int
     round_score: tuple[int, int]
+    current_high_bid: int
+    bidder: int | None
 
     def __str__(self) -> str:
         return f"(P:{self.played_cards},H:{self.holding_cards},T:{self.trump_suit})"
 
 
 # we just have to play a card from our holding cards
-TarneebAction = DeckCard | Suit | TarneebGameActions
+TarneebAction = DeckCard | TarneebGameActions | BidAction
 GAME_OVER_SCORE = 31
 
 
@@ -192,40 +204,82 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         return self._invalid_move_outcome(s, agent_idx)
 
     def _game_action(
-        self, s: TarneebSate, action: TarneebGameActions, agent_idx: int
+        self, s: TarneebSate, action: TarneebGameActions | BidAction, agent_idx: int
     ) -> MultiAgentOutcome[TarneebSate]:
-        if action == TarneebGameActions.PASS:
+        if isinstance(action, BidAction):
             if not s.suit_selected:
-                if s.passes_count == 3:
-                    new_state = replace(s, suit_selected=True)
-                    return MultiAgentOutcome(
-                        next_state=new_state,
-                        reward_per_agent=self._wrong_move_reward(agent_idx),
-                        done=True,
-                        # the current agent selected the suit, so they get to start
-                        next_agent_idx=agent_idx,
+                bid_value = action.value
+                bid_suit = action.suit
+                if bid_value > s.current_high_bid and 7 <= bid_value <= 13:
+                    new_bids = s.bids.copy()
+                    new_bids[agent_idx] = (bid_value, bid_suit)
+                    new_state = replace(
+                        s,
+                        current_high_bid=bid_value,
+                        bidder=agent_idx,
+                        bids=new_bids,
+                        last_player_idx=agent_idx,
+                        passes_count=0,  # reset passes on bid
                     )
-                if s.passes_count < 3:
-                    new_state = replace(s, passes_count=s.passes_count + 1)
+                    if all(b is not None for b in new_state.bids):
+                        new_state = replace(
+                            new_state, suit_selected=True, trump_suit=bid_suit
+                        )
                     return MultiAgentOutcome(
                         next_state=new_state,
                         reward_per_agent=self._no_reward(),
                         done=False,
-                        next_agent_idx=next_agent(agent_idx),
+                        next_agent_idx=(
+                            next_agent(agent_idx)
+                            if not new_state.suit_selected
+                            else (
+                                none_throws(new_state.bidder)
+                                if new_state.trump_suit is not None
+                                else 0
+                            )
+                        ),
                     )
-            # can't pass after suit is selected
+                else:
+                    return self._invalid_move_outcome(s, agent_idx)
             return self._invalid_move_outcome(s, agent_idx)
 
-        if action == TarneebGameActions.DOUBLE:
+        if action == TarneebGameActions.PASS:
             if not s.suit_selected:
-                new_state = replace(s, suit_selected=True, double_by=agent_idx)
+                new_passes = s.passes_count + 1
+                new_state = replace(
+                    s,
+                    passes_count=new_passes,
+                    last_player_idx=agent_idx,
+                )
+                if new_passes == 4:
+                    new_state = replace(new_state, suit_selected=True, trump_suit=None)
                 return MultiAgentOutcome(
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
                     done=False,
-                    next_agent_idx=next_agent(agent_idx),
+                    next_agent_idx=(
+                        next_agent(agent_idx)
+                        if not new_state.suit_selected
+                        else (
+                            none_throws(new_state.bidder)
+                            if new_state.trump_suit is not None
+                            else 0
+                        )
+                    ),
                 )
-            # can't double before suit is selected
+            # can't pass after suit is selected
+            return self._invalid_move_outcome(s, agent_idx)
+
+        if action == TarneebGameActions.DOUBLE:
+            if s.suit_selected and s.double_by is None:
+                new_state = replace(s, double_by=agent_idx)
+                return MultiAgentOutcome(
+                    next_state=new_state,
+                    reward_per_agent=self._no_reward(),
+                    done=False,
+                    next_agent_idx=none_throws(s.bidder),
+                )
+            # can't double before suit is selected or if already doubled
             return self._invalid_move_outcome(s, agent_idx)
 
     def _get_updated_round_score(
@@ -311,6 +365,8 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             score=s.score,
             round_num=s.round_num,
             round_score=s.round_score,
+            current_high_bid=s.current_high_bid,
+            bidder=s.bidder,
         )
 
     def agent_step(
@@ -321,7 +377,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             # stage one - selecting trump suit
             return self._select_suit(s, action, agent_idx)
 
-        if isinstance(action, TarneebGameActions):
+        if isinstance(action, (TarneebGameActions, BidAction)):
             return self._game_action(s, action, agent_idx)
 
         # action is DeckCard
@@ -346,4 +402,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             round_num=1,
             last_player_idx=None,
             round_score=(0, 0),
+            current_high_bid=6,  # start below 7
+            bidder=None,
+            bids=[None] * 4,
         )
