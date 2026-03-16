@@ -37,14 +37,25 @@ class RandomTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
 class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
     AGENT_STATE_T = type(None)
 
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self._state = None
+        self.verbose = verbose
 
     def act(self, s: PartialTarneebState) -> TarneebAction:
         print(f"\nYour turn!")
-        print(
-            f"Played cards: {[str(c) for c in sorted(s.played_cards, key=lambda c: (c.suit.value.value, -c._number))]}"
-        )
+        if s.played_cards:
+            played_info = []
+            if s.last_player_idx is not None:
+                num_cards = len(s.played_cards)
+                starting_player = (s.last_player_idx - num_cards + 1) % 4
+                for i, card in enumerate(s.played_cards):
+                    player = (starting_player + i) % 4
+                    played_info.append(f"P{player}: {card}")
+            else:
+                played_info = [str(card) for card in s.played_cards]
+            print(f"Played cards in this trick: {', '.join(played_info)}")
+        else:
+            print("No cards played yet in this trick.")
         print(
             f"Your cards: {[str(c) for c in sorted(s.holding_cards, key=lambda c: (c.suit.value.value, -c._number))]}"
         )
@@ -52,7 +63,7 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
         print(f"Score: {s.score}")
         print(f"Round score: {s.round_score}")
         if s.double_by is not None:
-            print(f"Doubled by player {s.double_by}")
+            print(f"Doubled by P{s.double_by}")
         if not s.trump_suit:
             print(f"Current high bid: {s.current_high_bid}")
             if s.bidder is not None:

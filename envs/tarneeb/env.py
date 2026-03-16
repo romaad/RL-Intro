@@ -98,6 +98,7 @@ class PartialTarneebState:
     round_score: tuple[int, int]
     current_high_bid: int
     bidder: int | None
+    last_player_idx: int | None
 
     def __str__(self) -> str:
         return f"(P:{self.played_cards},H:{self.holding_cards},T:{self.trump_suit})"
@@ -225,6 +226,14 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                         new_state = replace(
                             new_state, suit_selected=True, trump_suit=bid_suit
                         )
+                        bids_str = ", ".join(
+                            f"P{i}: {b[0]} {b[1].name}"
+                            for i, b in enumerate(new_state.bids)
+                            if b
+                        )
+                        print(
+                            f"Bidding complete. Winning bid: {bid_value} {bid_suit.name} by P{agent_idx}. All bids: {bids_str}"
+                        )
                     return MultiAgentOutcome(
                         next_state=new_state,
                         reward_per_agent=self._no_reward(),
@@ -253,6 +262,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 )
                 if new_passes == 4:
                     new_state = replace(new_state, suit_selected=True, trump_suit=None)
+                    print("All players passed. No trump suit.")
                 return MultiAgentOutcome(
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
@@ -304,6 +314,9 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         if len(played_cards) % 4 == 0:
             # A hand is over
             hand_score = self._calc_score(agent_idx, played_cards, s.trump_suit)
+            print(
+                f"Hand completed: {[str(c) for c in played_cards]} - Won by team {hand_score.index(1)}"
+            )
             new_state = replace(
                 s,
                 played_cards=[],
@@ -367,6 +380,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             round_score=s.round_score,
             current_high_bid=s.current_high_bid,
             bidder=s.bidder,
+            last_player_idx=s.last_player_idx,
         )
 
     def agent_step(

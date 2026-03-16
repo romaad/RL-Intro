@@ -27,6 +27,7 @@ class _Args:
     show_plot: bool
     mode: str
     human_players: int
+    verbose: bool
 
 
 def run_easy21(args: _Args) -> None:
@@ -64,7 +65,7 @@ def run_easy21(args: _Args) -> None:
 def run_tarneeb(args: _Args) -> None:
     agents: list[Agent[PartialTarneebState, TarneebAction]] = []
     for _ in range(args.human_players):
-        agents.append(HumanTarneebAgent())
+        agents.append(HumanTarneebAgent(verbose=args.verbose))
     for _ in range(4 - args.human_players):
         agent = RandomTarneebAgent()
         agent.env_name = "tarneeb"
@@ -133,6 +134,11 @@ def create_parser():
         dest="show_plot",
         help="Disable plotting the value function after training.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output, including detailed game state information.",
+    )
 
     return parser
 
@@ -146,6 +152,7 @@ def main() -> None:
         show_plot=args.show_plot,
         mode=args.mode,
         human_players=args.human_players,
+        verbose=args.verbose,
     )
     if args.game == "easy21":
         run_easy21(args_dataclass)
