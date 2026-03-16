@@ -17,9 +17,27 @@ class Outcome(Generic[State]):
     next_state: State
     reward: float
     done: bool
+    # only for multi-agent envs
 
     def __str__(self) -> str:
         return f"O(NS:{self.next_state},R:{self.reward},D?:{self.done})"
+
+
+@dataclass
+class MultiAgentOutcome(Generic[State]):
+    """
+    Represents the outcome of taking an action
+    in a multi-agent environment.
+    1. Agents perform actions in turns in a round.
+    2. After each action, the environment returns the next agent to act,
+       the next state, the reward for the acting agent, and whether the episode is done.
+    3. The rewards are given after all agents have taken their actions in a round.
+    """
+
+    next_agent_idx: int
+    next_state: State
+    reward_per_agent: list[float]
+    done: bool
 
 
 @dataclass
@@ -41,21 +59,6 @@ class Env(Generic[State, Action]):
         return self.step_impl(s, action)
 
     def step_impl(self, s: State, action: Action) -> Outcome[State]:
-        raise NotImplementedError
-
-    def init_state(self) -> State:
-        raise NotImplementedError
-
-
-class MultipleAgentEnv(Env[State, list[Action]], Generic[State, Action, PartialState]):
-    """Base class for an environment with multiple agents."""
-
-    def step_impl(self, s: State, action: list[Action]) -> Outcome[State]:
-        raise NotImplementedError
-
-    def agent_step(
-        self, agent_idx: int, s: State, action: Action
-    ) -> Outcome[PartialState]:
         raise NotImplementedError
 
     def init_state(self) -> State:
@@ -170,3 +173,27 @@ class Runner(Generic[State, Action]):
                 )
         agent.on_train_end()
         return total_reward / num_episodes
+
+
+class NotSupportedError(Exception):
+    """Exception raised for unsupported operations in the environment."""
+
+    pass
+
+
+class MultipleAgentEnv(Env[State, list[Action]], Generic[State, PartialState, Action]):
+    """Base class for an environment with multiple agents."""
+
+    def agent_step(
+        self, s: State, action: Action, agent_idx: int
+    ) -> MultiAgentOutcome[State]:
+        raise NotImplementedError
+
+    def init_state(self) -> State:
+        raise NotImplementedError
+
+    def to_partial_state(self, s: State, agent_idx: int) -> PartialState:
+        raise NotImplementedError
+
+    def step_impl(self, s: State, action: list[Action]) -> Outcome[State]:
+        raise NotSupportedError("Use agent_step for multi-agent environments.")
