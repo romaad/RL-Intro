@@ -7,6 +7,9 @@ from .env import (
     DeckCard,
     BidAction,
 )
+from agents.monte_carlo import MonteCarloAgent
+from agents.sarsa import SarsaAgent, SarsaLambdaAgent
+from agents.value_approx import LinearApproxAgent, LinearValueApproximator
 import random
 
 
@@ -153,3 +156,122 @@ class HumanTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
 
         print("Invalid input, try again.")
         return self.act(s)
+
+
+class NaiveTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
+    """A simple rule-based agent for Tarneeb."""
+
+    def act(self, s: PartialTarneebState) -> TarneebAction:
+        # For bidding: bid 7 if possible, else pass
+        if not s.trump_suit:
+            if s.current_high_bid < 7:
+                return BidAction(7, Suit.HEARTS)  # arbitrary suit
+            else:
+                return TarneebGameActions.PASS
+        else:
+            # For playing: play random valid card
+            if s.holding_cards:
+                return random.choice(s.holding_cards)
+            else:
+                return TarneebGameActions.PASS
+
+
+class _TarneebControlBaseAgent:
+    def action_space(self) -> list[TarneebAction]:
+        # This is complex, as actions depend on state
+        # For simplicity, return empty, agents handle it
+        return []
+
+    def state_to_xy(self, s: PartialTarneebState) -> tuple[int, int]:
+        # Simple representation: number of cards left, round number
+        return (len(s.holding_cards), s.round_num)
+
+    def get_xy_labels(self) -> tuple[str, str]:
+        return ("Cards left", "Round")
+
+    def get_states(self) -> list[PartialTarneebState]:
+        # Hard to enumerate, return empty
+        return []
+
+    def _get_possible_actions(self, s: PartialTarneebState) -> list[TarneebAction]:
+        """Get possible actions for the current state."""
+        if not s.trump_suit:
+            # Bidding phase
+            actions = [TarneebGameActions.PASS]
+            for value in range(7, 14):
+                for suit in Suit:
+                    actions.append(BidAction(value, suit))
+            return actions
+        else:
+            # Playing phase
+            actions = []
+            if s.double_by is None:
+                actions.append(TarneebGameActions.DOUBLE)
+            actions.extend(s.holding_cards)
+            return actions
+
+    def act(self, s: PartialTarneebState) -> TarneebAction:
+        # Override to use state-dependent actions
+        possible_actions = self._get_possible_actions(s)
+        if random.random() < getattr(self, '_epsilon', 0.1):  # default epsilon
+            return random.choice(possible_actions)
+        else:
+            # Greedy action: choose the one with highest Q-value
+            best_action = max(possible_actions, key=lambda a: self.q_value(s, a))
+            return best_action
+
+    def get_variable_learning_rate(self, s: PartialTarneebState, a: TarneebAction | None) -> float:
+        if a is None:
+            return 1.0
+        # Use the number of returns for (s,a) as visit count
+        visit_count = len(self._state.returns.get((s, a), []))
+        return 1.0 / (visit_count + 1)
+
+
+class MCTarneebAgent(
+    _TarneebControlBaseAgent, MonteCarloAgent[PartialTarneebState, TarneebAction]
+):
+    """An agent that uses Monte Carlo methods for Tarneeb."""
+
+    pass
+
+
+class SarsaTarneebAgent(
+    _TarneebControlBaseAgent,
+    SarsaAgent[PartialTarneebState, TarneebAction],
+    MonteCarloAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA agent for Tarneeb."""
+
+    pass
+
+
+class SarsaLambdaTarneebAgent(
+    _TarneebControlBaseAgent,
+    SarsaLambdaAgent[PartialTarneebState, TarneebAction],
+    MonteCarloAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA(λ) agent for Tarneeb."""
+
+    pass
+
+
+# For linear approximation, need feature extractor
+# But for simplicity, skip for now
+
+
+class SarsaLambdaTarneebLinearApproxAgent(
+    _TarneebControlBaseAgent,
+    SarsaLambdaAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA(λ) agent for Tarneeb with linear approximation."""
+
+    @property
+    def name(self) -> str:
+        return f"SarsaLinearApprox(λ={self._lambda})"
+
+    def __init__(self, lambbda: float, gamma: float) -> None:
+        # Need to implement LinearValueApproximator for Tarneeb
+        # For now, just inherit
+        _TarneebControlBaseAgent.__init__(self)
+        SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)

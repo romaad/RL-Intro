@@ -58,7 +58,7 @@ class BidAction:
 
 
 @dataclass(frozen=True)
-class TarneebSate:
+class TarneebState:
     # previously played cards in the current round
     played_cards: list[DeckCard]
     # cards that the player is holding
@@ -86,6 +86,43 @@ class TarneebSate:
             f"H:{self.holding_cards})"
         )
 
+    def __hash__(self) -> int:
+        # Convert lists to tuples for hashing
+        return hash((
+            tuple(self.played_cards),
+            tuple(tuple(cards) for cards in self.holding_cards),
+            self.trump_suit,
+            self.suit_selected,
+            self.passes_count,
+            self.double_by,
+            self.score,
+            self.round_num,
+            self.last_player_idx,
+            self.round_score,
+            self.current_high_bid,
+            self.bidder,
+            tuple(self.bids),
+        ))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TarneebState):
+            return False
+        return (
+            self.played_cards == other.played_cards and
+            self.holding_cards == other.holding_cards and
+            self.trump_suit == other.trump_suit and
+            self.suit_selected == other.suit_selected and
+            self.passes_count == other.passes_count and
+            self.double_by == other.double_by and
+            self.score == other.score and
+            self.round_num == other.round_num and
+            self.last_player_idx == other.last_player_idx and
+            self.round_score == other.round_score and
+            self.current_high_bid == other.current_high_bid and
+            self.bidder == other.bidder and
+            self.bids == other.bids
+        )
+
 
 @dataclass(frozen=True)
 class PartialTarneebState:
@@ -103,6 +140,37 @@ class PartialTarneebState:
     def __str__(self) -> str:
         return f"(P:{self.played_cards},H:{self.holding_cards},T:{self.trump_suit})"
 
+    def __hash__(self) -> int:
+        # Convert lists to tuples for hashing
+        return hash((
+            tuple(self.played_cards),
+            tuple(self.holding_cards),
+            self.trump_suit,
+            self.double_by,
+            self.score,
+            self.round_num,
+            self.round_score,
+            self.current_high_bid,
+            self.bidder,
+            self.last_player_idx,
+        ))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PartialTarneebState):
+            return False
+        return (
+            self.played_cards == other.played_cards and
+            self.holding_cards == other.holding_cards and
+            self.trump_suit == other.trump_suit and
+            self.double_by == other.double_by and
+            self.score == other.score and
+            self.round_num == other.round_num and
+            self.round_score == other.round_score and
+            self.current_high_bid == other.current_high_bid and
+            self.bidder == other.bidder and
+            self.last_player_idx == other.last_player_idx
+        )
+
 
 # we just have to play a card from our holding cards
 TarneebAction = DeckCard | TarneebGameActions | BidAction
@@ -113,7 +181,7 @@ def next_agent(current_agent_idx: int) -> int:
     return (current_agent_idx + 1) % 4
 
 
-class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebAction]):
+class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebAction]):
 
     def _create_deck(self) -> list[DeckCard]:
         deck = []
@@ -168,12 +236,12 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             float(num) for num in list(round_score) * 2
         ]  # each team has two players
 
-    def _calc_round_score(self, s: TarneebSate) -> tuple[int, int]:
+    def _calc_round_score(self, s: TarneebState) -> tuple[int, int]:
         return (s.score[0] + s.round_score[0], s.score[1] + s.round_score[1])
 
     def _invalid_move_outcome(
-        self, s: TarneebSate, agent_idx: int
-    ) -> MultiAgentOutcome[TarneebSate]:
+        self, s: TarneebState, agent_idx: int
+    ) -> MultiAgentOutcome[TarneebState]:
         return MultiAgentOutcome(
             next_state=s,
             reward_per_agent=self._wrong_move_reward(agent_idx),
@@ -182,8 +250,8 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         )
 
     def _select_suit(
-        self, s: TarneebSate, suit: Suit, agent_idx: int
-    ) -> MultiAgentOutcome[TarneebSate]:
+        self, s: TarneebState, suit: Suit, agent_idx: int
+    ) -> MultiAgentOutcome[TarneebState]:
         if not s.suit_selected:
             if s.trump_suit and s.trump_suit.value.value >= suit.value.value:
                 # can't select a lower-value trump suit
@@ -205,8 +273,8 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         return self._invalid_move_outcome(s, agent_idx)
 
     def _game_action(
-        self, s: TarneebSate, action: TarneebGameActions | BidAction, agent_idx: int
-    ) -> MultiAgentOutcome[TarneebSate]:
+        self, s: TarneebState, action: TarneebGameActions | BidAction, agent_idx: int
+    ) -> MultiAgentOutcome[TarneebState]:
         if isinstance(action, BidAction):
             if not s.suit_selected:
                 bid_value = action.value
@@ -225,14 +293,6 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                     if all(b is not None for b in new_state.bids):
                         new_state = replace(
                             new_state, suit_selected=True, trump_suit=bid_suit
-                        )
-                        bids_str = ", ".join(
-                            f"P{i}: {b[0]} {b[1].name}"
-                            for i, b in enumerate(new_state.bids)
-                            if b
-                        )
-                        print(
-                            f"Bidding complete. Winning bid: {bid_value} {bid_suit.name} by P{agent_idx}. All bids: {bids_str}"
                         )
                     return MultiAgentOutcome(
                         next_state=new_state,
@@ -262,7 +322,6 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 )
                 if new_passes == 4:
                     new_state = replace(new_state, suit_selected=True, trump_suit=None)
-                    print("All players passed. No trump suit.")
                 return MultiAgentOutcome(
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
@@ -300,13 +359,13 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             curr_score[1] + hand_score[1],
         )
 
-    def _round_done(self, s: TarneebSate) -> bool:
+    def _round_done(self, s: TarneebState) -> bool:
         # round is done when all players have no cards left
         return all(len(cards) == 0 for cards in s.holding_cards)
 
     def play_card(
-        self, s: TarneebSate, played_card: DeckCard, agent_idx: int
-    ) -> MultiAgentOutcome[TarneebSate]:
+        self, s: TarneebState, played_card: DeckCard, agent_idx: int
+    ) -> MultiAgentOutcome[TarneebState]:
         # playing a card
         new_holding = s.holding_cards.copy()
         new_holding[agent_idx].remove(played_card)
@@ -321,14 +380,6 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             # A hand is over
             hand_winner, hand_score = self._calc_score(
                 agent_idx, played_cards, s.trump_suit
-            )
-            hand_info = []
-            starting_player = (agent_idx - 3) % 4
-            for i, card in enumerate(played_cards):
-                player = (starting_player + i) % 4
-                hand_info.append(f"P{player}: {card}")
-            print(
-                f"Hand completed: {', '.join(hand_info)} - Won by P{hand_winner} (team {hand_score.index(1)})"
             )
             new_state = replace(
                 s,
@@ -382,7 +433,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
                 next_agent_idx=next_agent(agent_idx),
             )
 
-    def to_partial_state(self, s: TarneebSate, agent_idx: int) -> PartialTarneebState:
+    def to_partial_state(self, s: TarneebState, agent_idx: int) -> PartialTarneebState:
         return PartialTarneebState(
             played_cards=s.played_cards,
             holding_cards=s.holding_cards[agent_idx],
@@ -397,8 +448,8 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
         )
 
     def agent_step(
-        self, s: TarneebSate, action: TarneebAction, agent_idx: int
-    ) -> MultiAgentOutcome[TarneebSate]:
+        self, s: TarneebState, action: TarneebAction, agent_idx: int
+    ) -> MultiAgentOutcome[TarneebState]:
 
         if isinstance(action, Suit):
             # stage one - selecting trump suit
@@ -414,11 +465,11 @@ class TarneebEnv(MultipleAgentEnv[TarneebSate, PartialTarneebState, TarneebActio
             return self._invalid_move_outcome(s, agent_idx)
         return self.play_card(s, action, agent_idx)
 
-    def init_state(self) -> TarneebSate:
+    def init_state(self) -> TarneebState:
         deck = self._create_deck()
         random.shuffle(deck)
         holding_cards = [deck[i * 13 : (i + 1) * 13] for i in range(4)]
-        return TarneebSate(
+        return TarneebState(
             played_cards=[],
             holding_cards=holding_cards,
             trump_suit=None,

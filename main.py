@@ -13,8 +13,19 @@ from easy21.easy21_agents import (
     SarsaLambdaEasy21Agent,
     SarsaLambdaEasy21LinearApproxAgent,
 )
-from envs.tarneeb.env import TarneebEnv, PartialTarneebState, TarneebAction, TarneebSate
-from envs.tarneeb.agents import RandomTarneebAgent, HumanTarneebAgent
+from envs.tarneeb.env import (
+    TarneebEnv,
+    PartialTarneebState,
+    TarneebAction,
+    TarneebState,
+)
+from envs.tarneeb.agents import (
+    RandomTarneebAgent,
+    HumanTarneebAgent,
+    MCTarneebAgent,
+    SarsaTarneebAgent,
+    SarsaLambdaTarneebAgent,
+)
 from plot import turn_plot_off
 from utils import drange
 import argparse
@@ -28,6 +39,7 @@ class _Args:
     mode: str
     human_players: int
     verbose: bool
+    agent: str
 
 
 def run_easy21(args: _Args) -> None:
@@ -63,22 +75,42 @@ def run_easy21(args: _Args) -> None:
 
 
 def run_tarneeb(args: _Args) -> None:
-    agents: list[Agent[PartialTarneebState, TarneebAction]] = []
-    for _ in range(args.human_players):
-        agents.append(HumanTarneebAgent(verbose=args.verbose))
-    for _ in range(4 - args.human_players):
-        agent = RandomTarneebAgent()
+    if args.human_players > 0:
+        # Humans + AI agents
+        agents: list[Agent[PartialTarneebState, TarneebAction]] = [
+            HumanTarneebAgent(verbose=args.verbose) for _ in range(args.human_players)
+        ]
+        # AI agents
+        ai_count = 4 - args.human_players
+        if args.agent == "mc":
+            ai_agents = [MCTarneebAgent() for _ in range(ai_count)]
+        elif args.agent == "sarsa":
+            ai_agents = [SarsaTarneebAgent() for _ in range(ai_count)]
+        elif args.agent == "sarsa-lambda":
+            ai_agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+        else:
+            raise ValueError(f"Unknown agent: {args.agent}")
+        agents.extend(ai_agents)
+    else:
+        # RL agents - use selected agent for all players
+        if args.agent == "mc":
+            agents = [MCTarneebAgent() for _ in range(4)]
+        elif args.agent == "sarsa":
+            agents = [SarsaTarneebAgent() for _ in range(4)]
+        elif args.agent == "sarsa-lambda":
+            agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]  # default lambda
+
+        else:
+            raise ValueError(f"Unknown agent: {args.agent}")
+    for agent in agents:
         agent.env_name = "tarneeb"
-        if args.mode == "play":
+        if args.mode == "play" and not isinstance(agent, HumanTarneebAgent):
             try:
                 agent.restore()
                 print(f"Loaded saved state for {agent.name}")
-            except FileNotFoundError:
-                print(f"No saved state found for {agent.name}, using fresh agent")
-        agents.append(agent)
-    for agent in agents:
-        agent.env_name = "tarneeb"
-    runner = MultiAgentRunner[TarneebSate, PartialTarneebState, TarneebAction]()
+            except (FileNotFoundError, TypeError):
+                print(f"No saved state found or type mismatch for {agent.name}, using fresh agent")
+    runner = MultiAgentRunner[TarneebState, PartialTarneebState, TarneebAction]()
     if not args.show_plot:
         turn_plot_off()
     env = TarneebEnv()
@@ -90,7 +122,7 @@ def run_tarneeb(args: _Args) -> None:
     )
     if args.mode == "train":
         for agent in agents:
-            if isinstance(agent, RandomTarneebAgent):
+            if not isinstance(agent, HumanTarneebAgent):
                 agent.checkpoint()
 
 
@@ -135,6 +167,13 @@ def create_parser():
         help="Disable plotting the value function after training.",
     )
     parser.add_argument(
+        "--agent",
+        type=str,
+        default="mc",
+        choices=["mc", "sarsa", "sarsa-lambda"],
+        help="The RL agent to use for AI players in Tarneeb.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose output, including detailed game state information.",
@@ -153,6 +192,7 @@ def main() -> None:
         mode=args.mode,
         human_players=args.human_players,
         verbose=args.verbose,
+        agent=args.agent,
     )
     if args.game == "easy21":
         run_easy21(args_dataclass)
