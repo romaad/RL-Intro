@@ -4,6 +4,7 @@ from typing import TypeVar
 
 
 def save_pickle(state: object, name: str) -> None:
+    os.makedirs(os.path.dirname(name), exist_ok=True)
     pickle.dump(state, open(name, "wb"))
 
 

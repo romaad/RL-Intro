@@ -256,22 +256,39 @@ class SarsaLambdaTarneebAgent(
     pass
 
 
-# For linear approximation, need feature extractor
-# But for simplicity, skip for now
+class TarneebLinearValueApprox(LinearValueApproximator[PartialTarneebState, TarneebAction]):
+    """Linear value function approximator for Tarneeb."""
+
+    def __init__(self) -> None:
+        from .feature_extractor import FEATURE_SIZE, tarneeb_feature_extractor
+
+        super().__init__(
+            feature_extractor=tarneeb_feature_extractor,
+            feature_vector_size=FEATURE_SIZE,
+            alpha=0.01,
+        )
 
 
 class SarsaLambdaTarneebLinearApproxAgent(
     _TarneebControlBaseAgent,
+    LinearApproxAgent[PartialTarneebState, TarneebAction],
     SarsaLambdaAgent[PartialTarneebState, TarneebAction],
 ):
-    """SARSA(λ) agent for Tarneeb with linear approximation."""
+    """SARSA(λ) agent for Tarneeb with linear value function approximation."""
+
+    _FIXED_LEARNING_RATE: float = 0.1
 
     @property
     def name(self) -> str:
-        return f"SarsaLinearApprox(λ={self._lambda})"
+        return f"TarneebSarsaLinearApprox(λ={self._lambda})"
 
     def __init__(self, lambbda: float, gamma: float) -> None:
-        # Need to implement LinearValueApproximator for Tarneeb
-        # For now, just inherit
         _TarneebControlBaseAgent.__init__(self)
+        LinearApproxAgent.__init__(self, value_approximator=TarneebLinearValueApprox())
         SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)
+
+    def get_variable_learning_rate(
+        self, s: PartialTarneebState, a: TarneebAction | None
+    ) -> float:
+        # Use a fixed learning rate; the linear approximator manages its own alpha.
+        return self._FIXED_LEARNING_RATE
