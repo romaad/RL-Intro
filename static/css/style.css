@@ -1,0 +1,411 @@
+/* ============================================================
+   RL Game Hub – shared styles
+   ============================================================ */
+
+/* ----- Reset & base ---------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0d3b1e;
+  color: #f0f0f0;
+  min-height: 100vh;
+}
+
+a {
+  color: #81c995;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ----- Layout helpers --------------------------------------- */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ============================================================
+   Landing page
+   ============================================================ */
+.landing-header {
+  text-align: center;
+  padding: 3rem 1rem 2rem;
+}
+
+.landing-header h1 {
+  font-size: 2.8rem;
+  letter-spacing: 1px;
+  color: #ffd700;
+  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+
+.landing-header p {
+  margin-top: .6rem;
+  font-size: 1.1rem;
+  color: #aad4b5;
+}
+
+.game-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.game-card {
+  background: #163d25;
+  border: 2px solid #2d6a44;
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  width: 260px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .8rem;
+  color: #f0f0f0;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  text-decoration: none;
+}
+
+.game-card-icon {
+  font-size: 3rem;
+}
+
+.game-card h2 {
+  font-size: 1.5rem;
+  color: #ffd700;
+}
+
+.game-card p {
+  font-size: .9rem;
+  color: #aad4b5;
+  line-height: 1.5;
+}
+
+.play-btn {
+  display: inline-block;
+  margin-top: .5rem;
+  padding: .5rem 1.4rem;
+  background: #2d6a44;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: .95rem;
+  color: #ffd700;
+  transition: background .2s;
+}
+
+.game-card:hover .play-btn {
+  background: #3a8a5a;
+}
+
+/* ============================================================
+   Easy21 game page
+   ============================================================ */
+.game-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at center, #1a5c30 0%, #0a2d18 100%);
+}
+
+/* --- Header --- */
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .8rem 1.5rem;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+
+.game-header h1 {
+  font-size: 1.5rem;
+  color: #ffd700;
+  letter-spacing: 1px;
+}
+
+.back-link {
+  font-size: .95rem;
+  color: #81c995;
+  white-space: nowrap;
+}
+
+.score-bar {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  font-size: .9rem;
+}
+
+.score-pill {
+  padding: .25rem .7rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: .85rem;
+}
+
+.score-pill.win  { background: #1b5e20; color: #a5d6a7; }
+.score-pill.lose { background: #b71c1c; color: #ffcdd2; }
+.score-pill.draw { background: #37474f; color: #cfd8dc; }
+
+/* --- Table --- */
+.game-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  gap: 1.2rem;
+  position: relative;
+}
+
+/* --- Player sections (Dealer / You) --- */
+.player-section {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(0,0,0,.25);
+  border-radius: 16px;
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+}
+
+.player-section h2 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #81c995;
+  margin-bottom: .8rem;
+}
+
+.cards-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  min-height: 90px;
+}
+
+/* playing card */
+.card {
+  width: 62px;
+  height: 88px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,.5);
+  flex-shrink: 0;
+  transition: transform .3s;
+}
+
+.card.face-up {
+  background: #fff;
+  color: #1a1a1a;
+  border: 2px solid #ddd;
+}
+
+.card.face-down {
+  background: linear-gradient(135deg, #1a237e 25%, #283593 100%);
+  border: 2px solid #3949ab;
+  color: transparent;
+}
+
+.card.face-down::after {
+  content: '?';
+  color: rgba(255,255,255,.4);
+  font-size: 1.6rem;
+}
+
+/* sum badge (large) */
+.sum-badge {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5);
+}
+
+.sum-badge.player {
+  background: #1565c0;
+  color: #fff;
+  border: 3px solid #42a5f5;
+}
+
+.sum-badge.dealer {
+  background: #4a148c;
+  color: #fff;
+  border: 3px solid #ab47bc;
+}
+
+.section-label {
+  margin-top: .6rem;
+  font-size: .85rem;
+  color: #aad4b5;
+}
+
+/* --- Divider --- */
+.table-divider {
+  width: 100%;
+  max-width: 480px;
+  border: none;
+  border-top: 1px dashed rgba(255,255,255,.15);
+}
+
+/* --- Result overlay --- */
+.result-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.55);
+  border-radius: 0;
+  z-index: 10;
+}
+
+.result-box {
+  background: #163d25;
+  border: 2px solid #2d6a44;
+  border-radius: 20px;
+  padding: 2rem 3rem;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  animation: pop-in .3s ease;
+  max-width: 320px;
+  width: 90%;
+}
+
+@keyframes pop-in {
+  0%   { transform: scale(.7); opacity: 0; }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+.result-emoji {
+  font-size: 3rem;
+  margin-bottom: .4rem;
+}
+
+.result-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: .4rem;
+}
+
+.result-title.win  { color: #69f0ae; }
+.result-title.lose { color: #ff5252; }
+.result-title.draw { color: #b0bec5; }
+
+.result-detail {
+  font-size: .9rem;
+  color: #aad4b5;
+  margin-bottom: 1.2rem;
+}
+
+/* --- Buttons --- */
+.btn {
+  padding: .65rem 1.8rem;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  letter-spacing: .5px;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.btn-new-game {
+  background: #ffd700;
+  color: #1a1a1a;
+}
+
+.btn-hit {
+  background: #2e7d32;
+  color: #fff;
+  min-width: 110px;
+}
+
+.btn-stick {
+  background: #e65100;
+  color: #fff;
+  min-width: 110px;
+}
+
+.btn-play-again {
+  background: #ffd700;
+  color: #1a1a1a;
+}
+
+/* --- Action row --- */
+.action-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* --- Rules accordion --- */
+.rules-section {
+  width: 100%;
+  max-width: 480px;
+  font-size: .82rem;
+}
+
+.rules-section summary {
+  cursor: pointer;
+  color: #81c995;
+  user-select: none;
+  padding: .4rem 0;
+}
+
+.rules-section ul {
+  margin-top: .5rem;
+  padding-left: 1.4rem;
+  color: #aad4b5;
+  line-height: 1.8;
+}
+
+/* --- Status text --- */
+#status-msg {
+  font-size: .9rem;
+  color: #aad4b5;
+  min-height: 1.2em;
+  text-align: center;
+}
