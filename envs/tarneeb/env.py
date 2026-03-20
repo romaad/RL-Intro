@@ -88,39 +88,41 @@ class TarneebState:
 
     def __hash__(self) -> int:
         # Convert lists to tuples for hashing
-        return hash((
-            tuple(self.played_cards),
-            tuple(tuple(cards) for cards in self.holding_cards),
-            self.trump_suit,
-            self.suit_selected,
-            self.passes_count,
-            self.double_by,
-            self.score,
-            self.round_num,
-            self.last_player_idx,
-            self.round_score,
-            self.current_high_bid,
-            self.bidder,
-            tuple(self.bids),
-        ))
+        return hash(
+            (
+                tuple(self.played_cards),
+                tuple(tuple(cards) for cards in self.holding_cards),
+                self.trump_suit,
+                self.suit_selected,
+                self.passes_count,
+                self.double_by,
+                self.score,
+                self.round_num,
+                self.last_player_idx,
+                self.round_score,
+                self.current_high_bid,
+                self.bidder,
+                tuple(self.bids),
+            )
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TarneebState):
             return False
         return (
-            self.played_cards == other.played_cards and
-            self.holding_cards == other.holding_cards and
-            self.trump_suit == other.trump_suit and
-            self.suit_selected == other.suit_selected and
-            self.passes_count == other.passes_count and
-            self.double_by == other.double_by and
-            self.score == other.score and
-            self.round_num == other.round_num and
-            self.last_player_idx == other.last_player_idx and
-            self.round_score == other.round_score and
-            self.current_high_bid == other.current_high_bid and
-            self.bidder == other.bidder and
-            self.bids == other.bids
+            self.played_cards == other.played_cards
+            and self.holding_cards == other.holding_cards
+            and self.trump_suit == other.trump_suit
+            and self.suit_selected == other.suit_selected
+            and self.passes_count == other.passes_count
+            and self.double_by == other.double_by
+            and self.score == other.score
+            and self.round_num == other.round_num
+            and self.last_player_idx == other.last_player_idx
+            and self.round_score == other.round_score
+            and self.current_high_bid == other.current_high_bid
+            and self.bidder == other.bidder
+            and self.bids == other.bids
         )
 
 
@@ -142,33 +144,35 @@ class PartialTarneebState:
 
     def __hash__(self) -> int:
         # Convert lists to tuples for hashing
-        return hash((
-            tuple(self.played_cards),
-            tuple(self.holding_cards),
-            self.trump_suit,
-            self.double_by,
-            self.score,
-            self.round_num,
-            self.round_score,
-            self.current_high_bid,
-            self.bidder,
-            self.last_player_idx,
-        ))
+        return hash(
+            (
+                tuple(self.played_cards),
+                tuple(self.holding_cards),
+                self.trump_suit,
+                self.double_by,
+                self.score,
+                self.round_num,
+                self.round_score,
+                self.current_high_bid,
+                self.bidder,
+                self.last_player_idx,
+            )
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PartialTarneebState):
             return False
         return (
-            self.played_cards == other.played_cards and
-            self.holding_cards == other.holding_cards and
-            self.trump_suit == other.trump_suit and
-            self.double_by == other.double_by and
-            self.score == other.score and
-            self.round_num == other.round_num and
-            self.round_score == other.round_score and
-            self.current_high_bid == other.current_high_bid and
-            self.bidder == other.bidder and
-            self.last_player_idx == other.last_player_idx
+            self.played_cards == other.played_cards
+            and self.holding_cards == other.holding_cards
+            and self.trump_suit == other.trump_suit
+            and self.double_by == other.double_by
+            and self.score == other.score
+            and self.round_num == other.round_num
+            and self.round_score == other.round_score
+            and self.current_high_bid == other.current_high_bid
+            and self.bidder == other.bidder
+            and self.last_player_idx == other.last_player_idx
         )
 
 

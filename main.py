@@ -87,7 +87,9 @@ def run_tarneeb(args: _Args) -> None:
         elif args.agent == "sarsa":
             ai_agents = [SarsaTarneebAgent() for _ in range(ai_count)]
         elif args.agent == "sarsa-lambda":
-            ai_agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+            ai_agents = [
+                SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
         agents.extend(ai_agents)
@@ -98,7 +100,9 @@ def run_tarneeb(args: _Args) -> None:
         elif args.agent == "sarsa":
             agents = [SarsaTarneebAgent() for _ in range(4)]
         elif args.agent == "sarsa-lambda":
-            agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]  # default lambda
+            agents = [
+                SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)
+            ]  # default lambda
 
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
@@ -109,7 +113,9 @@ def run_tarneeb(args: _Args) -> None:
                 agent.restore()
                 print(f"Loaded saved state for {agent.name}")
             except (FileNotFoundError, TypeError):
-                print(f"No saved state found or type mismatch for {agent.name}, using fresh agent")
+                print(
+                    f"No saved state found or type mismatch for {agent.name}, using fresh agent"
+                )
     runner = MultiAgentRunner[TarneebState, PartialTarneebState, TarneebAction]()
     if not args.show_plot:
         turn_plot_off()
