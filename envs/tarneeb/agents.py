@@ -9,7 +9,12 @@ from .env import (
 )
 from agents.monte_carlo import MonteCarloAgent
 from agents.sarsa import SarsaAgent, SarsaLambdaAgent
-from agents.value_approx import LinearApproxAgent, LinearValueApproximator
+from agents.value_approx import (
+    CNNApproxAgent,
+    CNNValueApproximator,
+    LinearApproxAgent,
+    LinearValueApproximator,
+)
 import random
 
 
@@ -293,4 +298,68 @@ class SarsaLambdaTarneebLinearApproxAgent(
         self, s: PartialTarneebState, a: TarneebAction | None
     ) -> float:
         # Use a fixed learning rate; the linear approximator manages its own alpha.
+        return self._FIXED_LEARNING_RATE
+
+
+class TarneebCNNValueApprox(CNNValueApproximator[PartialTarneebState, TarneebAction]):
+    """CNN + 3-hidden-layer value function approximator for Tarneeb.
+
+    Feature layout from ``tarneeb_feature_extractor`` (FEATURE_SIZE = 180):
+      [  0: 52] holding cards one-hot
+      [ 52:104] played cards one-hot
+      [104:109] trump suit one-hot (5-dim)
+      [109:161] action card one-hot
+      [161:180] other scalars (pass/double flags, bid, scores, round, phase)
+
+    The CNN block uses 3 channels over 52 card positions:
+      channel 0: holding cards  [  0: 52]
+      channel 1: played cards   [ 52:104]
+      channel 2: action card    [109:161]
+
+    The other block contains the remaining 24 scalar features:
+      [104:109] + [161:180]
+    """
+
+    # CNN card-channel slices: (start, stop) indexing the full feature vector
+    _CNN_CHANNEL_SLICES: list[tuple[int, int]] = [(0, 52), (52, 104), (109, 161)]
+    # Non-card scalar feature slices
+    _OTHER_SLICES: list[tuple[int, int]] = [(104, 109), (161, 180)]
+
+    def __init__(self) -> None:
+        from .feature_extractor import tarneeb_feature_extractor
+
+        super().__init__(
+            feature_extractor=tarneeb_feature_extractor,
+            cnn_input_len=52,
+            cnn_channel_slices=self._CNN_CHANNEL_SLICES,
+            other_slices=self._OTHER_SLICES,
+            cnn_filters=16,
+            cnn_kernel=4,
+            fc_hidden=(256, 128, 64),
+            alpha=0.001,
+        )
+
+
+class SarsaLambdaTarneebCNNApproxAgent(
+    _TarneebControlBaseAgent,
+    CNNApproxAgent[PartialTarneebState, TarneebAction],
+    SarsaLambdaAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA(λ) agent for Tarneeb with a CNN value function approximator."""
+
+    _FIXED_LEARNING_RATE: float = 0.1
+
+    @property
+    def name(self) -> str:
+        return f"TarneebSarsaCNNApprox(λ={self._lambda})"
+
+    def __init__(self, lambbda: float, gamma: float) -> None:
+        _TarneebControlBaseAgent.__init__(self)
+        CNNApproxAgent.__init__(self, value_approximator=TarneebCNNValueApprox())
+        SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)
+
+    def get_variable_learning_rate(
+        self, s: PartialTarneebState, a: TarneebAction | None
+    ) -> float:
+        # Use a fixed learning rate; the CNN approximator manages its own alpha.
         return self._FIXED_LEARNING_RATE
