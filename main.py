@@ -113,7 +113,9 @@ def run_tarneeb(args: _Args) -> None:
                 agent.restore()
                 print(f"Loaded saved state for {agent.name}")
             except (FileNotFoundError, TypeError):
-                print(f"No saved state found or type mismatch for {agent.name}, using fresh agent")
+                print(
+                    f"No saved state found or type mismatch for {agent.name}, using fresh agent"
+                )
     runner = MultiAgentRunner[TarneebState, PartialTarneebState, TarneebAction]()
     if not args.show_plot:
         turn_plot_off()

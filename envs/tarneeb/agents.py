@@ -213,14 +213,16 @@ class _TarneebControlBaseAgent:
     def act(self, s: PartialTarneebState) -> TarneebAction:
         # Override to use state-dependent actions
         possible_actions = self._get_possible_actions(s)
-        if random.random() < getattr(self, '_epsilon', 0.1):  # default epsilon
+        if random.random() < getattr(self, "_epsilon", 0.1):  # default epsilon
             return random.choice(possible_actions)
         else:
             # Greedy action: choose the one with highest Q-value
             best_action = max(possible_actions, key=lambda a: self.q_value(s, a))
             return best_action
 
-    def get_variable_learning_rate(self, s: PartialTarneebState, a: TarneebAction | None) -> float:
+    def get_variable_learning_rate(
+        self, s: PartialTarneebState, a: TarneebAction | None
+    ) -> float:
         if a is None:
             return 1.0
         # Use the number of returns for (s,a) as visit count
