@@ -26,6 +26,7 @@ from envs.tarneeb.agents import (
     SarsaTarneebAgent,
     SarsaLambdaTarneebAgent,
     SarsaLambdaTarneebLinearApproxAgent,
+    SarsaLambdaTarneebCNNApproxAgent,
 )
 from plot import turn_plot_off
 from utils import drange
@@ -91,6 +92,8 @@ def run_tarneeb(args: _Args) -> None:
             ai_agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
         elif args.agent == "value-approx":
             ai_agents = [SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+        elif args.agent == "cnn-approx":
+            ai_agents = [SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
         agents.extend(ai_agents)
@@ -104,6 +107,8 @@ def run_tarneeb(args: _Args) -> None:
             agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]  # default lambda
         elif args.agent == "value-approx":
             agents = [SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]
+        elif args.agent == "cnn-approx":
+            agents = [SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
     for agent in agents:
@@ -176,7 +181,7 @@ def create_parser():
         "--agent",
         type=str,
         default="mc",
-        choices=["mc", "sarsa", "sarsa-lambda", "value-approx"],
+        choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx"],
         help="The RL agent to use for AI players in Tarneeb.",
     )
     parser.add_argument(

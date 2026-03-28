@@ -300,6 +300,10 @@ class SarsaLambdaTarneebLinearApproxAgent(
         # Use a fixed learning rate; the linear approximator manages its own alpha.
         return self._FIXED_LEARNING_RATE
 
+    def update(self, steps: list) -> None:
+        # Reset eligibility traces at episode end (standard SARSA(λ) behaviour).
+        self._eligibility.clear()
+
 
 class TarneebCNNValueApprox(CNNValueApproximator[PartialTarneebState, TarneebAction]):
     """CNN + 3-hidden-layer value function approximator for Tarneeb.
@@ -363,3 +367,7 @@ class SarsaLambdaTarneebCNNApproxAgent(
     ) -> float:
         # Use a fixed learning rate; the CNN approximator manages its own alpha.
         return self._FIXED_LEARNING_RATE
+
+    def update(self, steps: list) -> None:
+        # Reset eligibility traces at episode end (standard SARSA(λ) behaviour).
+        self._eligibility.clear()
