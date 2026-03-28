@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tarneeb – RL Game Hub</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="game-body">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="game-header">
+    <a href="/" class="back-link">← Home</a>
+    <h1>Tarneeb 🂡</h1>
+    <div class="score-bar">
+      <span class="score-pill win">W: <span id="wins">0</span></span>
+      <span class="score-pill lose">L: <span id="losses">0</span></span>
+      <button id="new-game-btn" class="btn btn-new-game">New Game</button>
+    </div>
+  </header>
+
+  <!-- ── Game table ─────────────────────────────────────────── -->
+  <main class="game-table" id="game-table">
+
+    <!-- Result overlay -->
+    <div class="result-overlay" id="result-overlay">
+      <div class="result-box">
+        <div class="result-emoji" id="result-emoji"></div>
+        <div class="result-title" id="result-title"></div>
+        <div class="result-detail" id="result-detail"></div>
+        <button class="btn btn-play-again" id="play-again-btn">Play Again</button>
+      </div>
+    </div>
+
+    <!-- Info strip: trump suit / scores / round -->
+    <div class="tarneeb-info" id="tarneeb-info">
+      <span class="info-pill" id="pill-trump">Trump: –</span>
+      <span class="info-pill" id="pill-score">Score: 0 – 0</span>
+      <span class="info-pill" id="pill-round">Round: 1</span>
+      <span class="info-pill" id="pill-bid">Bid: –</span>
+    </div>
+
+    <!-- Opponents strip -->
+    <div class="opponents-strip" id="opponents-strip">
+      <span class="opponent-chip" id="chip-right">Right (opp): 13 cards</span>
+      <span class="opponent-chip" id="chip-partner">Partner: 13 cards</span>
+      <span class="opponent-chip" id="chip-left">Left (opp): 13 cards</span>
+    </div>
+
+    <!-- Current trick compass -->
+    <section class="player-section" style="max-width:420px;">
+      <h2>Current Trick</h2>
+      <div class="trick-area">
+        <div class="trick-slot top">
+          <span class="trick-player-label">Partner</span>
+          <div class="t-card empty" id="trick-2">–</div>
+        </div>
+        <div class="trick-slot left">
+          <span class="trick-player-label">Left</span>
+          <div class="t-card empty" id="trick-3">–</div>
+        </div>
+        <div class="trick-slot center"></div>
+        <div class="trick-slot right">
+          <span class="trick-player-label">Right</span>
+          <div class="t-card empty" id="trick-1">–</div>
+        </div>
+        <div class="trick-slot bottom">
+          <span class="trick-player-label">You</span>
+          <div class="t-card empty" id="trick-0">–</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status message -->
+    <p id="status-msg"></p>
+
+    <!-- Bidding controls (shown during bidding phase) -->
+    <div class="bid-controls" id="bid-controls" style="display:none;">
+      <p class="bid-hint">
+        Current high bid: <strong id="high-bid-val">–</strong>
+        <span id="high-bid-by"></span>
+      </p>
+
+      <!-- Suit selector -->
+      <div class="bid-row" id="suit-row">
+        <button class="btn btn-suit hearts"   data-suit="HEARTS"   disabled>♥</button>
+        <button class="btn btn-suit diamonds" data-suit="DIAMONDS" disabled>♦</button>
+        <button class="btn btn-suit clubs"    data-suit="CLUBS"    disabled>♣</button>
+        <button class="btn btn-suit spades"   data-suit="SPADES"   disabled>♠</button>
+      </div>
+
+      <!-- Bid value selector -->
+      <div class="bid-value-row" id="bid-value-row">
+        <button class="bid-value-btn" id="bid-dec" disabled>−</button>
+        <span class="bid-value-display" id="bid-val-display">7</span>
+        <button class="bid-value-btn" id="bid-inc" disabled>+</button>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn btn-hit"  id="bid-btn"  disabled>BID</button>
+        <button class="btn btn-pass btn-stick" id="pass-btn" disabled>PASS</button>
+      </div>
+    </div>
+
+    <!-- Playing controls (shown during playing phase) -->
+    <div id="play-controls" style="display:none; width:100%; max-width:600px;">
+      <section class="player-section">
+        <h2>Your Hand</h2>
+        <div class="hand-area" id="hand-area"></div>
+      </section>
+      <div class="action-row action-row--spaced">
+        <button class="btn btn-double" id="double-btn" style="display:none;" disabled>DOUBLE</button>
+      </div>
+    </div>
+
+    <!-- Rules accordion -->
+    <details class="rules-section">
+      <summary>How to play Tarneeb</summary>
+      <ul>
+        <li>4 players — <strong>You</strong> &amp; <strong>Partner</strong> vs two opponents</li>
+        <li><strong>Bidding:</strong> starting at 7, each player bids the number of tricks their team will win (or passes). The highest bidder names the trump suit.</li>
+        <li><strong>Playing:</strong> leads any card; others must follow suit if possible. Highest card of the led suit wins unless a trump is played.</li>
+        <li>13 tricks per round. If the bidding team wins ≥ bid tricks, they score all their tricks. Otherwise they score −bid.</li>
+        <li>First team to reach <strong>31 points</strong> wins the game.</li>
+      </ul>
+    </details>
+
+  </main>
+
+  <!-- ── Game logic ─────────────────────────────────────────── -->
+  <script>
+    'use strict';
+
+    /* ── DOM refs ─────────────────────────────────────────── */
+    const newGameBtn    = document.getElementById('new-game-btn');
+    const playAgainBtn  = document.getElementById('play-again-btn');
+    const resultOverlay = document.getElementById('result-overlay');
+    const resultEmoji   = document.getElementById('result-emoji');
+    const resultTitle   = document.getElementById('result-title');
+    const resultDetail  = document.getElementById('result-detail');
+    const statusMsg     = document.getElementById('status-msg');
+    const winsEl        = document.getElementById('wins');
+    const lossesEl      = document.getElementById('losses');
+
+    const pillTrump   = document.getElementById('pill-trump');
+    const pillScore   = document.getElementById('pill-score');
+    const pillRound   = document.getElementById('pill-round');
+    const pillBid     = document.getElementById('pill-bid');
+    const chipRight   = document.getElementById('chip-right');
+    const chipPartner = document.getElementById('chip-partner');
+    const chipLeft    = document.getElementById('chip-left');
+
+    const trickSlots = {
+      0: document.getElementById('trick-0'),
+      1: document.getElementById('trick-1'),
+      2: document.getElementById('trick-2'),
+      3: document.getElementById('trick-3'),
+    };
+
+    const bidControls  = document.getElementById('bid-controls');
+    const playControls = document.getElementById('play-controls');
+    const handArea     = document.getElementById('hand-area');
+    const doubleBtn    = document.getElementById('double-btn');
+
+    const bidBtn      = document.getElementById('bid-btn');
+    const passBtn     = document.getElementById('pass-btn');
+    const bidDecBtn   = document.getElementById('bid-dec');
+    const bidIncBtn   = document.getElementById('bid-inc');
+    const bidValDisp  = document.getElementById('bid-val-display');
+    const highBidVal  = document.getElementById('high-bid-val');
+    const highBidBy   = document.getElementById('high-bid-by');
+    const suitBtns    = document.querySelectorAll('.btn-suit');
+
+    /* ── State ──────────────────────────────────────────── */
+    let gameActive   = false;
+    let selectedSuit = null;
+    let bidValue     = 7;
+    let minBid       = 7;
+    let gamePhase    = 'bidding';
+
+    /* ── Helpers ────────────────────────────────────────── */
+    const SUIT_COLORS = {
+      HEARTS: 'red', DIAMONDS: 'red', CLUBS: 'black', SPADES: 'black'
+    };
+    const SUIT_SYMBOLS = {
+      HEARTS: '♥', DIAMONDS: '♦', CLUBS: '♣', SPADES: '♠'
+    };
+    const SUIT_CLASS = {
+      HEARTS: 'trump-hearts', DIAMONDS: 'trump-diamonds',
+      CLUBS: 'trump-clubs',   SPADES: 'trump-spades'
+    };
+
+    function clearTrick() {
+      Object.values(trickSlots).forEach(el => {
+        el.textContent = '–';
+        el.className = 't-card empty';
+      });
+    }
+
+    function renderTrick(trick) {
+      clearTrick();
+      trick.forEach(entry => {
+        const slot = trickSlots[entry.player];
+        if (!slot) return;
+        slot.textContent = entry.display;
+        slot.className   = 't-card ' + (SUIT_COLORS[entry.suit] || 'black');
+      });
+    }
+
+    function renderHand(hand, enabled) {
+      handArea.innerHTML = '';
+      hand.forEach(card => {
+        const btn = document.createElement('button');
+        const isValid = card.valid !== false;
+        btn.className = 'hand-card ' + (SUIT_COLORS[card.suit] || 'black');
+        btn.textContent = card.display;
+        btn.disabled = !enabled || !isValid;
+        if (!isValid) btn.title = 'Must follow the led suit';
+        btn.addEventListener('click', () => playCard(card));
+        handArea.appendChild(btn);
+      });
+    }
+
+    function updateInfoPills(data) {
+      // Trump
+      pillTrump.className = 'info-pill';
+      if (data.trump_suit) {
+        pillTrump.textContent = 'Trump: ' + data.trump_suit_display;
+        pillTrump.classList.add(SUIT_CLASS[data.trump_suit]);
+      } else {
+        pillTrump.textContent = 'Trump: –';
+      }
+
+      // Score (team 0 vs team 1)
+      pillScore.textContent =
+        'Score: ' + data.score[0] + ' – ' + data.score[1];
+
+      // Round
+      pillRound.textContent = 'Round: ' + data.round_num;
+
+      // Current bid
+      if (!data.suit_selected && data.bidder !== null) {
+        pillBid.textContent =
+          'Bid: ' + data.current_high_bid +
+          (data.bidder_label ? ' by ' + data.bidder_label : '');
+      } else if (data.phase === 'bidding') {
+        pillBid.textContent = 'Bid: –';
+      } else {
+        pillBid.textContent = 'Bid: ' + data.current_high_bid;
+      }
+    }
+
+    function updateOpponents(data) {
+      const counts = data.player_card_counts;
+      chipRight.textContent   = 'Right (opp): ' + counts[1] + ' cards';
+      chipPartner.textContent = 'Partner: '      + counts[2] + ' cards';
+      chipLeft.textContent    = 'Left (opp): '  + counts[3] + ' cards';
+    }
+
+    function setBiddingControls(data) {
+      gamePhase = 'bidding';
+      bidControls.style.display  = '';
+      playControls.style.display = 'none';
+
+      const high = data.current_high_bid;
+      highBidVal.textContent = high;
+      highBidBy.textContent  = data.bidder_label ? ' by ' + data.bidder_label : '';
+
+      // Minimum valid bid is one above current high, at least 7
+      minBid   = Math.max(7, high + 1);
+      bidValue = minBid;
+      bidValDisp.textContent = bidValue;
+
+      const canBid = minBid <= 13;
+      suitBtns.forEach(b => { b.disabled = !canBid; });
+      bidDecBtn.disabled = true;
+      bidIncBtn.disabled = !canBid || bidValue >= 13;
+      bidBtn.disabled    = true;   // need suit selected first
+      passBtn.disabled   = false;
+      selectedSuit       = null;
+      suitBtns.forEach(b => b.classList.remove('selected'));
+    }
+
+    function setPlayingControls(data) {
+      gamePhase = 'playing';
+      bidControls.style.display  = 'none';
+      playControls.style.display = '';
+
+      const enabled = gameActive;
+      renderHand(data.hand, enabled);
+
+      // Double button: available if suit is selected and nobody has doubled yet
+      const canDouble = data.suit_selected && data.double_by === null;
+      if (canDouble) {
+        doubleBtn.style.display = '';
+        doubleBtn.disabled = !enabled;
+      } else {
+        doubleBtn.style.display = 'none';
+      }
+    }
+
+    function applyState(data) {
+      updateInfoPills(data);
+      updateOpponents(data);
+      renderTrick(data.trick || []);
+
+      if (data.phase === 'bidding') {
+        setBiddingControls(data);
+      } else {
+        setPlayingControls(data);
+      }
+
+      winsEl.textContent   = data.wins;
+      lossesEl.textContent = data.losses;
+    }
+
+    function showResult(result, data) {
+      const teamScore = data.score;
+      if (result === 'win') {
+        resultEmoji.textContent  = '🏆';
+        resultTitle.textContent  = 'Your team wins!';
+        resultTitle.className    = 'result-title win';
+        resultDetail.textContent =
+          'Final score — You: ' + teamScore[0] + '  Opponents: ' + teamScore[1];
+      } else if (result === 'lose') {
+        resultEmoji.textContent  = '😔';
+        resultTitle.textContent  = 'Opponents win!';
+        resultTitle.className    = 'result-title lose';
+        resultDetail.textContent =
+          'Final score — You: ' + teamScore[0] + '  Opponents: ' + teamScore[1];
+      } else {
+        resultEmoji.textContent  = '🤝';
+        resultTitle.textContent  = 'Draw!';
+        resultTitle.className    = 'result-title draw';
+        resultDetail.textContent = 'No winner this game.';
+      }
+      resultOverlay.style.display = 'flex';
+    }
+
+    /* ── API calls ──────────────────────────────────────── */
+    async function newGame() {
+      resultOverlay.style.display = 'none';
+      statusMsg.textContent = '';
+      gameActive = false;
+
+      try {
+        const res  = await fetch('/api/tarneeb/new', { method: 'POST' });
+        const data = await res.json();
+        if (data.error) { statusMsg.textContent = data.error; return; }
+        gameActive = true;
+        applyState(data);
+      } catch {
+        statusMsg.textContent = 'Network error. Please try again.';
+      }
+    }
+
+    async function sendAction(actionObj) {
+      if (!gameActive) return;
+      gameActive = false;   // prevent double-clicks
+      disableAllActions();
+      statusMsg.textContent = '';
+
+      try {
+        const res  = await fetch('/api/tarneeb/action', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ action: actionObj }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          statusMsg.textContent = data.error;
+          gameActive = true;
+          applyState(data);
+          return;
+        }
+
+        if (data.done) {
+          applyState(data);
+          disableAllActions();
+          showResult(data.result, data);
+        } else {
+          gameActive = true;
+          applyState(data);
+        }
+      } catch {
+        statusMsg.textContent = 'Network error. Please try again.';
+        gameActive = true;
+      }
+    }
+
+    function disableAllActions() {
+      suitBtns.forEach(b => { b.disabled = true; });
+      bidDecBtn.disabled = true;
+      bidIncBtn.disabled = true;
+      bidBtn.disabled    = true;
+      passBtn.disabled   = true;
+      doubleBtn.disabled = true;
+      handArea.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    }
+
+    /* ── Bidding event handlers ────────────────────────── */
+    suitBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        suitBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedSuit = btn.dataset.suit;
+        bidBtn.disabled = (minBid > 13);   // enable bid if suit chosen & bid in range
+      });
+    });
+
+    bidDecBtn.addEventListener('click', () => {
+      if (bidValue > minBid) {
+        bidValue--;
+        bidValDisp.textContent = bidValue;
+        bidDecBtn.disabled = (bidValue <= minBid);
+        bidIncBtn.disabled = (bidValue >= 13);
+      }
+    });
+
+    bidIncBtn.addEventListener('click', () => {
+      if (bidValue < 13) {
+        bidValue++;
+        bidValDisp.textContent = bidValue;
+        bidDecBtn.disabled = (bidValue <= minBid);
+        bidIncBtn.disabled = (bidValue >= 13);
+      }
+    });
+
+    bidBtn.addEventListener('click', () => {
+      if (!selectedSuit || minBid > 13) return;
+      sendAction({ kind: 'bid', value: bidValue, suit: selectedSuit });
+    });
+
+    passBtn.addEventListener('click', () => {
+      sendAction({ kind: 'pass' });
+    });
+
+    doubleBtn.addEventListener('click', () => {
+      sendAction({ kind: 'double' });
+    });
+
+    /* ── Card play ─────────────────────────────────────── */
+    function playCard(card) {
+      sendAction({ kind: 'card', suit: card.suit, number: card.number });
+    }
+
+    /* ── Bootstrap ─────────────────────────────────────── */
+    newGameBtn.addEventListener('click', newGame);
+    playAgainBtn.addEventListener('click', newGame);
+  </script>
+</body>
+</html>
