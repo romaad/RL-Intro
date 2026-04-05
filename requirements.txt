@@ -2,3 +2,4 @@ matplotlib
 numpy
 PyQt6
 torch
+flask
