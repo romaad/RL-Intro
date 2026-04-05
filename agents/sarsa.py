@@ -86,7 +86,7 @@ class SarsaLambdaAgent(SarsaAgent[State, Action]):
         delta = r + self._gamma * q_snext_anext - q_sa
 
         # update Q-values for all state-action pairs
-        for (s_e, a_e), e_trace in self._eligibility.items():
+        for (s_e, a_e), e_trace in list(self._eligibility.items()):
             q_e = self.q_value(s_e, a_e)
             q_e_new = q_e + alpha * delta * e_trace
             self.update_q_value(s_e, a_e, q_e_new)
