@@ -44,9 +44,8 @@
     <!-- Info strip: trump suit / scores / round -->
     <div class="tarneeb-info" id="tarneeb-info">
       <span class="info-pill" id="pill-trump">Trump: –</span>
-      <span class="info-pill info-pill-you" id="pill-score-you">Your Team: 0</span>
-      <span class="info-pill info-pill-opp" id="pill-score-opp">Opp Team: 0</span>
-      <span class="info-pill" id="pill-round-score">Round: 0 – 0</span>
+      <span class="info-pill info-pill-you game-score-pill" id="pill-score-you">Your Team: 0</span>
+      <span class="info-pill info-pill-opp game-score-pill" id="pill-score-opp">Opp Team: 0</span>
       <span class="info-pill" id="pill-round">Round: 1</span>
       <span class="info-pill" id="pill-bid">Bid: –</span>
     </div>
@@ -59,14 +58,17 @@
     </div>
 
     <div class="last-trick-top-right">
-      <div class="last-trick-mini" id="last-trick-mini">
-        <span class="last-trick-mini-label">Last Trick</span>
-        <div class="last-trick-mini-row" id="last-trick-row">
-          <div class="t-card mini empty">–</div>
-          <div class="t-card mini empty">–</div>
-          <div class="t-card mini empty">–</div>
-          <div class="t-card mini empty">–</div>
+      <div class="right-status-stack">
+        <div class="last-trick-mini" id="last-trick-mini">
+          <span class="last-trick-mini-label">Last Trick</span>
+          <div class="last-trick-mini-row" id="last-trick-row">
+            <div class="t-card mini empty">–</div>
+            <div class="t-card mini empty">–</div>
+            <div class="t-card mini empty">–</div>
+            <div class="t-card mini empty">–</div>
+          </div>
         </div>
+        <span class="info-pill round-score-pill" id="pill-round-score">Current Round: 0 – 0</span>
       </div>
     </div>
 

@@ -551,6 +551,13 @@ a:hover {
   justify-content: flex-end;
 }
 
+.right-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .45rem;
+}
+
 .last-trick-mini {
   display: flex;
   flex-direction: column;
@@ -651,6 +658,16 @@ a:hover {
 .info-pill.trump-spades   { border-color: #90caf9; color: #90caf9; }
 .info-pill-you { border-color: #69f0ae; color: #69f0ae; }
 .info-pill-opp { border-color: #ffab91; color: #ffab91; }
+
+.game-score-pill {
+  font-size: 1.02rem;
+  font-weight: 800;
+  padding: .45rem 1rem;
+}
+
+.round-score-pill {
+  font-size: .83rem;
+}
 
 /* Bidding controls */
 .bid-controls {
