@@ -24,6 +24,7 @@ class TarneebApiTests(unittest.TestCase):
 
             self.assertIn("last_trick", data)
             self.assertIn("play_events", data)
+            self.assertIn("bid_events", data)
             self.assertIn("trick_before", data)
 
     def test_action_response_keeps_score_and_name_metadata(self) -> None:
@@ -49,6 +50,8 @@ class TarneebApiTests(unittest.TestCase):
             self.assertIn("round_score", data)
             self.assertIn("player_names", data)
             self.assertIn("team_names", data)
+            self.assertIn("bid_events", data)
+            self.assertIsInstance(data["bid_events"], list)
             self.assertEqual(data["player_names"][0], "Ramadan")
             self.assertEqual(data["team_names"], new_data["team_names"])
 

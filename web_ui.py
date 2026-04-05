@@ -286,6 +286,23 @@ def _play_event(
     return None
 
 
+def _bid_event(
+    action: DeckCard | TarneebGameActions | BidAction, agent_idx: int
+) -> JsonDict | None:
+    if isinstance(action, BidAction):
+        return {
+            "player": agent_idx,
+            "kind": "bid",
+            "value": action.value,
+            "suit": action.suit.name,
+        }
+    if action == TarneebGameActions.PASS:
+        return {"player": agent_idx, "kind": "pass"}
+    if action == TarneebGameActions.DOUBLE:
+        return {"player": agent_idx, "kind": "double"}
+    return None
+
+
 def _maybe_completed_trick(
     prev_state: TarneebState,
     action: DeckCard | TarneebGameActions | BidAction,
@@ -318,12 +335,14 @@ def _advance_ai_turns(
     list[float],
     list[CardJson] | None,
     list[CardJson],
+    list[JsonDict],
 ]:
     ai_agents = [RandomTarneebAgent() for _ in range(4)]
     done = False
     rewards: list[float] = [0.0, 0.0, 0.0, 0.0]
     last_completed_trick: list[CardJson] | None = None
     play_events: list[CardJson] = []
+    bid_events: list[JsonDict] = []
 
     while current_player != 0 and not done:
         prev_state = state
@@ -333,6 +352,9 @@ def _advance_ai_turns(
         event = _play_event(action, current_player)
         if event:
             play_events.append(event)
+        bid_event = _bid_event(action, current_player)
+        if bid_event:
+            bid_events.append(bid_event)
         state = outcome.next_state
         maybe_trick = _maybe_completed_trick(prev_state, action, current_player, state)
         if maybe_trick:
@@ -342,7 +364,15 @@ def _advance_ai_turns(
         if done:
             rewards = outcome.reward_per_agent
 
-    return state, current_player, done, rewards, last_completed_trick, play_events
+    return (
+        state,
+        current_player,
+        done,
+        rewards,
+        last_completed_trick,
+        play_events,
+        bid_events,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +408,7 @@ def tarneeb_new():
     payload = TarneebApiResponseJson(
         state=_build_tarneeb_client_state(state, current_player, [], player_names),
         play_events=[],
+        bid_events=[],
         trick_before=[],
         done=False,
         result=None,
@@ -433,11 +464,15 @@ def tarneeb_action():
     prev_state = state
     trick_before = _build_trick_from_state(prev_state)
     play_events: list[CardJson] = []
+    bid_events: list[JsonDict] = []
 
     outcome = env.agent_step(state, action, current_player)
     event = _play_event(action, current_player)
     if event:
         play_events.append(event)
+    bid_event = _bid_event(action, current_player)
+    if bid_event:
+        bid_events.append(bid_event)
 
     state = outcome.next_state
     maybe_trick = _maybe_completed_trick(prev_state, action, current_player, state)
@@ -449,10 +484,17 @@ def tarneeb_action():
     rewards = outcome.reward_per_agent if done else [0.0, 0.0, 0.0, 0.0]
 
     if not done:
-        state, current_player, done, rewards, ai_last_trick, ai_play_events = (
-            _advance_ai_turns(env, state, current_player)
-        )
+        (
+            state,
+            current_player,
+            done,
+            rewards,
+            ai_last_trick,
+            ai_play_events,
+            ai_bid_events,
+        ) = _advance_ai_turns(env, state, current_player)
         play_events.extend(ai_play_events)
+        bid_events.extend(ai_bid_events)
         if ai_last_trick:
             last_trick = ai_last_trick
 
@@ -481,6 +523,7 @@ def tarneeb_action():
             player_names,
         ),
         play_events=play_events,
+        bid_events=bid_events,
         trick_before=trick_before,
         done=done,
         result=result,

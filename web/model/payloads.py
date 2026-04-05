@@ -333,6 +333,7 @@ class TarneebApiResponseJson:
     wins: int
     losses: int
     play_events: list[CardJson] | None = None
+    bid_events: list[JsonDict] | None = None
     trick_before: list[CardJson] | None = None
 
     def to_dict(self) -> JsonDict:
@@ -343,6 +344,8 @@ class TarneebApiResponseJson:
         data["losses"] = self.losses
         if self.play_events is not None:
             data["play_events"] = [c.to_dict() for c in self.play_events]
+        if self.bid_events is not None:
+            data["bid_events"] = self.bid_events
         if self.trick_before is not None:
             data["trick_before"] = [c.to_dict() for c in self.trick_before]
         return data

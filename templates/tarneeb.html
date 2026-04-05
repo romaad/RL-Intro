@@ -68,20 +68,20 @@
       <h2 id="trick-title">Current Trick</h2>
       <div class="trick-area">
         <div class="trick-slot top">
-          <span class="trick-player-label">Partner</span>
+          <span class="trick-player-label" id="trick-label-2">Partner</span>
           <div class="t-card empty" id="trick-2">–</div>
         </div>
         <div class="trick-slot left">
-          <span class="trick-player-label">Left</span>
+          <span class="trick-player-label" id="trick-label-3">Left</span>
           <div class="t-card empty" id="trick-3">–</div>
         </div>
         <div class="trick-slot center"></div>
         <div class="trick-slot right">
-          <span class="trick-player-label">Right</span>
+          <span class="trick-player-label" id="trick-label-1">Right</span>
           <div class="t-card empty" id="trick-1">–</div>
         </div>
         <div class="trick-slot bottom">
-          <span class="trick-player-label">You</span>
+          <span class="trick-player-label" id="trick-label-0">You</span>
           <div class="t-card empty" id="trick-0">–</div>
         </div>
       </div>
@@ -179,6 +179,12 @@
       2: document.getElementById('trick-2'),
       3: document.getElementById('trick-3'),
     };
+    const trickLabels = {
+      0: document.getElementById('trick-label-0'),
+      1: document.getElementById('trick-label-1'),
+      2: document.getElementById('trick-label-2'),
+      3: document.getElementById('trick-label-3'),
+    };
     const lastTrickRow = document.getElementById('last-trick-row');
 
     const bidControls = document.getElementById('bid-controls');
@@ -204,6 +210,7 @@
     let playerName = localStorage.getItem('tarneebPlayerName') || '';
     let currentPlayerLabels = ['You', 'Right', 'Partner', 'Left'];
     const PLAY_ANIM_MS = 380;
+    const BID_ANIM_MS = 700;
 
     /* ── Helpers ────────────────────────────────────────── */
     const SUIT_COLORS = {
@@ -293,6 +300,36 @@
       }
     }
 
+    function formatBidEvent(event, names) {
+      const playerNameForEvent = names[event.player] || ('Player ' + (event.player + 1));
+      if (event.kind === 'pass') {
+        return playerNameForEvent + ' passed';
+      }
+      if (event.kind === 'double') {
+        return playerNameForEvent + ' doubled';
+      }
+      if (event.kind === 'bid') {
+        const suitSym = SUIT_SYMBOLS[event.suit] || event.suit || '';
+        return playerNameForEvent + ' bid ' + event.value + ' ' + suitSym;
+      }
+      return playerNameForEvent + ' acted';
+    }
+
+    async function animateBidEvents(data) {
+      const events = data.bid_events || [];
+      if (!events.length) return;
+
+      const names = data.player_names || ['You', 'Right', 'Partner', 'Left'];
+      for (const event of events) {
+        statusMsg.textContent = formatBidEvent(event, names);
+        await sleep(BID_ANIM_MS);
+      }
+
+      if (!data.done && data.phase === 'bidding' && data.current_player === 0) {
+        statusMsg.textContent = 'Your turn to bid';
+      }
+    }
+
     function renderHand(hand, enabled) {
       handArea.innerHTML = '';
       hand.forEach(card => {
@@ -310,13 +347,17 @@
     function updateInfoPills(data) {
       // Trump
       pillTrump.className = 'info-pill';
+      const names = data.player_names || ['You', 'Right', 'Partner', 'Left'];
+      const doubleText = (data.double_by === null || data.double_by === undefined)
+        ? ''
+        : (' • Double ×2 by ' + (names[data.double_by] || 'Player'));
       if (data.trump_suit) {
         pillTrump.textContent =
           'Trump: ' + data.current_high_bid + ' ' + data.trump_suit_display +
-          ' (' + data.trump_suit + ')';
+          ' (' + data.trump_suit + ')' + doubleText;
         pillTrump.classList.add(SUIT_CLASS[data.trump_suit]);
       } else {
-        pillTrump.textContent = 'Trump: –';
+        pillTrump.textContent = 'Trump: –' + doubleText;
       }
 
       // Score (team 0 vs team 1)
@@ -352,6 +393,14 @@
       chipRight.textContent = names[1] + ' (opp): ' + counts[1] + ' cards';
       chipPartner.textContent = names[2] + ' (partner): ' + counts[2] + ' cards';
       chipLeft.textContent = names[3] + ' (opp): ' + counts[3] + ' cards';
+    }
+
+    function updateTrickLabels(data) {
+      const names = data.player_names || ['You', 'Right', 'Partner', 'Left'];
+      trickLabels[0].textContent = names[0];
+      trickLabels[1].textContent = names[1];
+      trickLabels[2].textContent = names[2];
+      trickLabels[3].textContent = names[3];
     }
 
     function setBiddingControls(data) {
@@ -396,6 +445,7 @@
       currentPlayerLabels = data.player_labels || currentPlayerLabels;
       updateInfoPills(data);
       updateOpponents(data);
+      updateTrickLabels(data);
       renderTrick(data.trick || []);
       renderLastTrick(data.last_trick || []);
 
@@ -482,11 +532,13 @@
         }
 
         if (data.done) {
+          await animateBidEvents(data);
           await animatePlayEvents(data);
           applyState(data);
           disableAllActions();
           showResult(data.result, data);
         } else {
+          await animateBidEvents(data);
           await animatePlayEvents(data);
           gameActive = true;
           applyState(data);

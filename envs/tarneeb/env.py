@@ -379,7 +379,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
                     done=False,
-                    next_agent_idx=next_agent(agent_idx),
+                    next_agent_idx=none_throws(s.bidder),
                 )
             # can only double during bidding, after at least one bid,
             # and only once
