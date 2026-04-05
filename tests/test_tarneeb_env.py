@@ -81,6 +81,29 @@ class TarneebEnvRulesTests(unittest.TestCase):
         )
         self.assertEqual(self.env._calc_round_score(failed_call_double), (-16, 14))
 
+    def test_bidder_starts_play_after_three_passes(self) -> None:
+        state = self.env.init_state()
+
+        # Player 1 makes the winning bid.
+        out_bid = self.env.agent_step(state, BidAction(7, Suit.SPADES), 1)
+        self.assertFalse(out_bid.next_state.suit_selected)
+        self.assertEqual(out_bid.next_agent_idx, 2)
+
+        # Three consecutive passes should close bidding.
+        out_pass_2 = self.env.agent_step(
+            out_bid.next_state, TarneebGameActions.PASS, 2
+        )
+        out_pass_3 = self.env.agent_step(
+            out_pass_2.next_state, TarneebGameActions.PASS, 3
+        )
+        out_pass_0 = self.env.agent_step(
+            out_pass_3.next_state, TarneebGameActions.PASS, 0
+        )
+
+        self.assertTrue(out_pass_0.next_state.suit_selected)
+        self.assertEqual(out_pass_0.next_state.trump_suit, Suit.SPADES)
+        self.assertEqual(out_pass_0.next_agent_idx, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

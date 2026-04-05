@@ -353,8 +353,18 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
                     passes_count=new_passes,
                     last_player_idx=agent_idx,
                 )
-                if new_passes == 4:
+                if s.bidder is None and new_passes == 4:
+                    # all players passed without any bid: no-trump round
                     new_state = replace(new_state, suit_selected=True, trump_suit=None)
+                elif s.bidder is not None and new_passes == 3:
+                    # bidding closed after three consecutive passes since last bid
+                    bidder_idx = none_throws(s.bidder)
+                    winning_bid = none_throws(new_state.bids[bidder_idx])
+                    new_state = replace(
+                        new_state,
+                        suit_selected=True,
+                        trump_suit=winning_bid[1],
+                    )
                 return MultiAgentOutcome(
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),

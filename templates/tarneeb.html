@@ -340,19 +340,40 @@
       }
     }
 
-    async function showGameStartAnimation(roundNum) {
+    async function showBidAnimation() {
       if (!startOverlay || !startRound || !startFight) return;
 
-      const roundNumber = Number.isInteger(roundNum) ? roundNum : 1;
-      startRound.textContent = 'ROUND ' + roundNumber;
+      startRound.style.display = '';
+      startRound.textContent = 'BID!';
+      startFight.style.display = 'none';
       startFight.classList.remove('show');
       startOverlay.classList.add('show');
 
       await sleep(900);
+
+      startOverlay.classList.remove('show');
+      startFight.style.display = '';
+      startRound.textContent = 'ROUND 1';
+      startFight.textContent = 'FIGHT!';
+      startRound.style.display = '';
+      startFight.classList.remove('show');
+    }
+
+    async function showFightAnimation() {
+      if (!startOverlay || !startRound || !startFight) return;
+
+      startRound.style.display = 'none';
+      startFight.style.display = '';
+      startFight.textContent = 'FIGHT!';
+      startFight.classList.remove('show');
+      startOverlay.classList.add('show');
+
+      await sleep(60);
       startFight.classList.add('show');
       await sleep(900);
 
       startOverlay.classList.remove('show');
+      startRound.style.display = '';
       startFight.classList.remove('show');
     }
 
@@ -537,7 +558,7 @@
         if (data.error) { statusMsg.textContent = data.error; return; }
         applyState(data);
         disableAllActions();
-        await showGameStartAnimation(data.round_num || 1);
+        await showBidAnimation();
         gameActive = true;
         applyState(data);
       } catch {
@@ -552,6 +573,7 @@
       statusMsg.textContent = '';
 
       try {
+        const wasBidding = gamePhase === 'bidding';
         const res = await fetch('/api/tarneeb/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -566,14 +588,22 @@
           return;
         }
 
+        const enteringPlay = wasBidding && data.phase === 'playing';
+
         if (data.done) {
           await animateBidEvents(data);
+          if (enteringPlay) {
+            await showFightAnimation();
+          }
           await animatePlayEvents(data);
           applyState(data);
           disableAllActions();
           showResult(data.result, data);
         } else {
           await animateBidEvents(data);
+          if (enteringPlay) {
+            await showFightAnimation();
+          }
           await animatePlayEvents(data);
           gameActive = true;
           applyState(data);
