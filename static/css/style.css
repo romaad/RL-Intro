@@ -575,6 +575,8 @@ a:hover {
 .info-pill.trump-diamonds { border-color: #ef9a9a; color: #ef9a9a; }
 .info-pill.trump-clubs    { border-color: #90caf9; color: #90caf9; }
 .info-pill.trump-spades   { border-color: #90caf9; color: #90caf9; }
+.info-pill-you { border-color: #69f0ae; color: #69f0ae; }
+.info-pill-opp { border-color: #ffab91; color: #ffab91; }
 
 /* Bidding controls */
 .bid-controls {

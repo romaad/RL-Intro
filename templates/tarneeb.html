@@ -37,7 +37,9 @@
     <!-- Info strip: trump suit / scores / round -->
     <div class="tarneeb-info" id="tarneeb-info">
       <span class="info-pill" id="pill-trump">Trump: –</span>
-      <span class="info-pill" id="pill-score">Score: 0 – 0</span>
+      <span class="info-pill info-pill-you" id="pill-score-you">Your Team: 0</span>
+      <span class="info-pill info-pill-opp" id="pill-score-opp">Opp Team: 0</span>
+      <span class="info-pill" id="pill-round-score">Round: 0 – 0</span>
       <span class="info-pill" id="pill-round">Round: 1</span>
       <span class="info-pill" id="pill-bid">Bid: –</span>
     </div>
@@ -161,7 +163,9 @@
     const lossesEl = document.getElementById('losses');
 
     const pillTrump = document.getElementById('pill-trump');
-    const pillScore = document.getElementById('pill-score');
+    const pillScoreYou = document.getElementById('pill-score-you');
+    const pillScoreOpp = document.getElementById('pill-score-opp');
+    const pillRoundScore = document.getElementById('pill-round-score');
     const pillRound = document.getElementById('pill-round');
     const pillBid = document.getElementById('pill-bid');
     const trickTitle = document.getElementById('trick-title');
@@ -197,6 +201,8 @@
     let bidValue = 7;
     let minBid = 7;
     let gamePhase = 'bidding';
+    let playerName = localStorage.getItem('tarneebPlayerName') || '';
+    let currentPlayerLabels = ['You', 'Right', 'Partner', 'Left'];
     const PLAY_ANIM_MS = 380;
 
     /* ── Helpers ────────────────────────────────────────── */
@@ -248,7 +254,10 @@
         } else {
           el.classList.add(SUIT_COLORS[card.suit] || 'black');
           el.textContent = card.display;
-          el.title = 'P' + (i + 1) + ': ' + (card.player === 0 ? 'You' : card.player === 1 ? 'Right' : card.player === 2 ? 'Partner' : 'Left');
+          const label = (typeof card.player === 'number' && currentPlayerLabels[card.player])
+            ? currentPlayerLabels[card.player]
+            : ('P' + (i + 1));
+          el.title = 'P' + (i + 1) + ': ' + label;
         }
         lastTrickRow.appendChild(el);
       }
@@ -311,8 +320,14 @@
       }
 
       // Score (team 0 vs team 1)
-      pillScore.textContent =
-        'Score: ' + data.score[0] + ' – ' + data.score[1];
+      const teamNames = data.team_names || ['Your Team', 'Opponents'];
+      pillScoreYou.textContent = teamNames[0] + ': ' + data.score[0];
+      pillScoreOpp.textContent = teamNames[1] + ': ' + data.score[1];
+
+      // Running score this round
+      pillRoundScore.textContent =
+        'Round: ' + teamNames[0] + ' ' + data.round_score[0] +
+        ' – ' + data.round_score[1] + ' ' + teamNames[1];
 
       // Round
       pillRound.textContent = 'Round: ' + data.round_num;
@@ -333,9 +348,10 @@
 
     function updateOpponents(data) {
       const counts = data.player_card_counts;
-      chipRight.textContent = 'Right (opp): ' + counts[1] + ' cards';
-      chipPartner.textContent = 'Partner: ' + counts[2] + ' cards';
-      chipLeft.textContent = 'Left (opp): ' + counts[3] + ' cards';
+      const names = data.player_names || ['You', 'Right', 'Partner', 'Left'];
+      chipRight.textContent = names[1] + ' (opp): ' + counts[1] + ' cards';
+      chipPartner.textContent = names[2] + ' (partner): ' + counts[2] + ' cards';
+      chipLeft.textContent = names[3] + ' (opp): ' + counts[3] + ' cards';
     }
 
     function setBiddingControls(data) {
@@ -377,6 +393,7 @@
     }
 
     function applyState(data) {
+      currentPlayerLabels = data.player_labels || currentPlayerLabels;
       updateInfoPills(data);
       updateOpponents(data);
       renderTrick(data.trick || []);
@@ -421,8 +438,19 @@
       statusMsg.textContent = '';
       gameActive = false;
 
+      const promptDefault = playerName || 'Player';
+      const entered = window.prompt('Enter your name', promptDefault);
+      if (entered !== null) {
+        playerName = entered.trim() || 'Player';
+        localStorage.setItem('tarneebPlayerName', playerName);
+      }
+
       try {
-        const res = await fetch('/api/tarneeb/new', { method: 'POST' });
+        const res = await fetch('/api/tarneeb/new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_name: playerName || 'Player' }),
+        });
         const data = await res.json();
         if (data.error) { statusMsg.textContent = data.error; return; }
         gameActive = true;

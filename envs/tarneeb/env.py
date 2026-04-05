@@ -235,13 +235,42 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
         else:
             return winning_player_idx, (0, 1)
 
-    def _calc_reward(self, round_score: tuple[int, int]) -> list[float]:
+    def _calc_reward(self, total_score: tuple[int, int]) -> list[float]:
         return [
-            float(num) for num in list(round_score) * 2
+            float(num) for num in list(total_score) * 2
         ]  # each team has two players
 
     def _calc_round_score(self, s: TarneebState) -> tuple[int, int]:
-        return (s.score[0] + s.round_score[0], s.score[1] + s.round_score[1])
+        caller_idx = s.bidder
+        round_team0, round_team1 = s.round_score
+
+        # No caller (all passed): fallback to plain collected-tricks scoring.
+        if caller_idx is None:
+            return (s.score[0] + round_team0, s.score[1] + round_team1)
+
+        caller_team = caller_idx % 2
+        call_value = s.current_high_bid
+
+        caller_collected = round_team0 if caller_team == 0 else round_team1
+        other_collected = round_team1 if caller_team == 0 else round_team0
+
+        caller_made_call = caller_collected >= call_value
+
+        if caller_made_call:
+            caller_delta = caller_collected
+            other_delta = other_collected
+            if s.double_by is not None:
+                caller_delta *= 2
+        else:
+            caller_delta = -call_value
+            other_delta = other_collected
+            if s.double_by is not None:
+                caller_delta = -2 * call_value
+                other_delta *= 2
+
+        if caller_team == 0:
+            return (s.score[0] + caller_delta, s.score[1] + other_delta)
+        return (s.score[0] + other_delta, s.score[1] + caller_delta)
 
     def _invalid_move_outcome(
         self, s: TarneebState, agent_idx: int

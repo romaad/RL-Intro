@@ -296,6 +296,8 @@ class TarneebClientStateJson:
     trick: list[CardJson]
     last_trick: list[CardJson]
     player_labels: list[str]
+    player_names: list[str]
+    team_names: list[str]
     double_by: int | None
     suit_selected: bool
 
@@ -316,6 +318,8 @@ class TarneebClientStateJson:
             "trick": [c.to_dict() for c in self.trick],
             "last_trick": [c.to_dict() for c in self.last_trick],
             "player_labels": self.player_labels,
+            "player_names": self.player_names,
+            "team_names": self.team_names,
             "double_by": self.double_by,
             "suit_selected": self.suit_selected,
         }

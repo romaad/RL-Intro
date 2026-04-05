@@ -9,6 +9,7 @@ Then open http://localhost:5000 in your browser.
 
 import argparse
 import os
+import random
 import sys
 from typing import Any, Mapping, cast
 
@@ -50,6 +51,40 @@ _SUIT_SYMBOLS = {
     "CLUBS": "♣",
     "SPADES": "♠",
 }
+
+_AI_NAME_POOL = [
+    "Alice",
+    "Bob",
+    "Mary",
+    "Curie",
+    "Mark",
+    "Eissa",
+    "Mazen",
+    "Saied",
+    "Amr",
+    "Abdo",
+    "Andrew",
+]
+
+
+def _normalize_player_name(name: str | None) -> str:
+    if name is None:
+        return "Player"
+    cleaned = name.strip()
+    return cleaned if cleaned else "Player"
+
+
+def _build_player_names(player_name: str | None) -> list[str]:
+    human_name = _normalize_player_name(player_name)
+    ai_names = random.sample(_AI_NAME_POOL, 3)
+    return [human_name, ai_names[0], ai_names[1], ai_names[2]]
+
+
+def _team_names(player_names: list[str]) -> list[str]:
+    return [
+        f"{player_names[0]} & {player_names[2]}",
+        f"{player_names[1]} & {player_names[3]}",
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +207,7 @@ def _build_tarneeb_client_state(
     state: TarneebState,
     current_player: int,
     last_trick: list[JsonDict] | None = None,
+    player_names: list[str] | None = None,
 ) -> TarneebClientStateJson:
     suit_name = state.trump_suit.name if state.trump_suit else None
 
@@ -190,7 +226,16 @@ def _build_tarneeb_client_state(
     trick = _build_trick_from_state(state)
     last_trick_cards = [CardJson.from_dict(c) for c in (last_trick or [])]
 
-    player_labels = ["You", "Right", "Partner", "Left"]
+    if player_names is None or len(player_names) != 4:
+        player_names = ["Player", "Right", "Partner", "Left"]
+
+    player_labels = [
+        f"You ({player_names[0]})",
+        player_names[1],
+        player_names[2],
+        player_names[3],
+    ]
+    team_names = _team_names(player_names)
 
     def card_info(c: DeckCard) -> CardJson:
         return CardJson.from_card(c).with_valid(
@@ -215,6 +260,8 @@ def _build_tarneeb_client_state(
         trick=trick,
         last_trick=last_trick_cards,
         player_labels=player_labels,
+        player_names=player_names,
+        team_names=team_names,
         double_by=state.double_by,
         suit_selected=state.suit_selected,
     )
@@ -310,17 +357,26 @@ def tarneeb_game():
 
 @app.route("/api/tarneeb/new", methods=["POST"])
 def tarneeb_new():
+    raw = request.get_json(silent=True)
+    request_data: Mapping[str, Any] = (
+        cast(Mapping[str, Any], raw) if isinstance(raw, dict) else {}
+    )
+    player_name_raw = request_data.get("player_name")
+    player_name = player_name_raw if isinstance(player_name_raw, str) else None
+
     env = TarneebEnv()
     state = env.init_state()
     current_player = 0
+    player_names = _build_player_names(player_name)
 
     session["tarneeb_state"] = _tarneeb_state_to_session(state)
     session["tarneeb_current_player"] = current_player
     session["tarneeb_done"] = False
     session["tarneeb_last_trick"] = []
+    session["tarneeb_player_names"] = player_names
 
     payload = TarneebApiResponseJson(
-        state=_build_tarneeb_client_state(state, current_player, []),
+        state=_build_tarneeb_client_state(state, current_player, [], player_names),
         play_events=[],
         trick_before=[],
         done=False,
@@ -346,6 +402,17 @@ def tarneeb_action():
         return jsonify({"error": "Game is already over. Start a new game."}), 400
 
     current_player = int(session.get("tarneeb_current_player", 0))
+    player_names_raw_obj = session.get("tarneeb_player_names", [])
+    player_names_raw: list[Any] = (
+        cast(list[Any], player_names_raw_obj)
+        if isinstance(player_names_raw_obj, list)
+        else []
+    )
+    player_names = (
+        [str(x) for x in player_names_raw]
+        if len(player_names_raw) == 4
+        else ["Player", "Right", "Partner", "Left"]
+    )
     last_trick_data_raw = session.get("tarneeb_last_trick", [])
     last_trick_data = cast(list[Mapping[str, Any]], last_trick_data_raw)
     last_trick: list[CardJson] = [CardJson.from_dict(c) for c in last_trick_data]
@@ -411,6 +478,7 @@ def tarneeb_action():
             state,
             current_player,
             [c.to_dict() for c in last_trick],
+            player_names,
         ),
         play_events=play_events,
         trick_before=trick_before,
