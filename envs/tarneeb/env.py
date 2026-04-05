@@ -30,7 +30,7 @@ class DeckCard:
         return f"{self._suit.value.abbv}{face}"
 
     def value(self) -> int:
-        return self._number
+        return (self._number - 1) if self._number > 1 else 13
 
     def number(self) -> int:
         """Get the number of the card (1-54)."""

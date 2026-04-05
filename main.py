@@ -20,7 +20,6 @@ from envs.tarneeb.env import (
     TarneebState,
 )
 from envs.tarneeb.agents import (
-    RandomTarneebAgent,
     HumanTarneebAgent,
     MCTarneebAgent,
     SarsaTarneebAgent,
@@ -89,11 +88,19 @@ def run_tarneeb(args: _Args) -> None:
         elif args.agent == "sarsa":
             ai_agents = [SarsaTarneebAgent() for _ in range(ai_count)]
         elif args.agent == "sarsa-lambda":
-            ai_agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+            ai_agents = [
+                SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)
+            ]
         elif args.agent == "value-approx":
-            ai_agents = [SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+            ai_agents = [
+                SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0)
+                for _ in range(ai_count)
+            ]
         elif args.agent == "cnn-approx":
-            ai_agents = [SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(ai_count)]
+            ai_agents = [
+                SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
+                for _ in range(ai_count)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
         agents.extend(ai_agents)
@@ -104,11 +111,19 @@ def run_tarneeb(args: _Args) -> None:
         elif args.agent == "sarsa":
             agents = [SarsaTarneebAgent() for _ in range(4)]
         elif args.agent == "sarsa-lambda":
-            agents = [SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]  # default lambda
+            agents = [
+                SarsaLambdaTarneebAgent(lambbda=0.5, gamma=1.0) for _ in range(4)
+            ]  # default lambda
         elif args.agent == "value-approx":
-            agents = [SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]
+            agents = [
+                SarsaLambdaTarneebLinearApproxAgent(lambbda=0.5, gamma=1.0)
+                for _ in range(4)
+            ]
         elif args.agent == "cnn-approx":
-            agents = [SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0) for _ in range(4)]
+            agents = [
+                SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
+                for _ in range(4)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
     for agent in agents:
