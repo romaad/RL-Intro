@@ -54,6 +54,7 @@ _SUIT_SYMBOLS = {
     "DIAMONDS": "♦",
     "CLUBS": "♣",
     "SPADES": "♠",
+    "SUNS": "☀",
 }
 
 _AI_NAME_POOL = [
@@ -323,7 +324,9 @@ def _build_tarneeb_client_state(
     if state.bidder is not None:
         winning_bid = state.bids[state.bidder]
         if winning_bid is not None:
-            current_high_bid_suit_name = winning_bid[1].name
+            current_high_bid_suit_name = (
+                winning_bid[1].name if winning_bid[1] is not None else "SUNS"
+            )
 
     hand = sorted(
         state.holding_cards[0],
@@ -414,7 +417,7 @@ def _bid_event(
             "player": agent_idx,
             "kind": "bid",
             "value": action.value,
-            "suit": action.suit.name,
+            "suit": action.suit.name if action.suit is not None else "SUNS",
         }
     if action == TarneebGameActions.PASS:
         return {"player": agent_idx, "kind": "pass"}
@@ -726,7 +729,8 @@ def _parse_tarneeb_action(action_data: Mapping[str, Any], state: TarneebState):
             raise ValueError("Invalid bid action")
         if suit_name not in _SUIT_SYMBOLS:
             raise ValueError("Invalid bid action")
-        return BidAction(value=value, suit=Suit[suit_name])
+        suit = None if suit_name == "SUNS" else Suit[suit_name]
+        return BidAction(value=value, suit=suit)
 
     if kind == "card":
         suit_name = action_data.get("suit")

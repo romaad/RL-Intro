@@ -32,6 +32,16 @@ class RandomTarneebAgent(Agent[PartialTarneebState, TarneebAction]):
             for bid in range(s.current_high_bid + 1, 14):
                 for suit in Suit:
                     actions.append(BidAction(bid, suit))
+                # suns (no-trump) is also a valid bid at each higher value
+                actions.append(BidAction(bid, None))
+            # suns can also overbid a suit bid at the same value
+            current_bid_is_suns = (
+                s.bidder is not None
+                and s.bids[s.bidder] is not None
+                and s.bids[s.bidder][1] is None
+            )
+            if not current_bid_is_suns and s.current_high_bid >= 7:
+                actions.append(BidAction(s.current_high_bid, None))
             return random.choice(actions)
         else:
             # Must play a card from holding

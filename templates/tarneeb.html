@@ -117,6 +117,7 @@
         <button class="btn btn-suit diamonds" data-suit="DIAMONDS" disabled>♦</button>
         <button class="btn btn-suit clubs" data-suit="CLUBS" disabled>♣</button>
         <button class="btn btn-suit spades" data-suit="SPADES" disabled>♠</button>
+        <button class="btn btn-suit suns" data-suit="SUNS" disabled title="Suns (no-trump)">☀</button>
       </div>
 
       <!-- Bid value selector -->
@@ -218,6 +219,7 @@
     let selectedSuit = null;
     let bidValue = 7;
     let minBid = 7;
+    let minBidForSuns = 7;   // may be lower than minBid when current high is a suit
     let gamePhase = 'bidding';
     let playerName = localStorage.getItem('tarneebPlayerName') || '';
     let currentPlayerLabels = ['You', 'Right', 'Partner', 'Left'];
@@ -226,14 +228,14 @@
 
     /* ── Helpers ────────────────────────────────────────── */
     const SUIT_COLORS = {
-      HEARTS: 'red', DIAMONDS: 'red', CLUBS: 'black', SPADES: 'black'
+      HEARTS: 'red', DIAMONDS: 'red', CLUBS: 'black', SPADES: 'black', SUNS: '#b8860b'
     };
     const SUIT_SYMBOLS = {
-      HEARTS: '♥', DIAMONDS: '♦', CLUBS: '♣', SPADES: '♠'
+      HEARTS: '♥', DIAMONDS: '♦', CLUBS: '♣', SPADES: '♠', SUNS: '☀'
     };
     const SUIT_CLASS = {
       HEARTS: 'trump-hearts', DIAMONDS: 'trump-diamonds',
-      CLUBS: 'trump-clubs', SPADES: 'trump-spades'
+      CLUBS: 'trump-clubs', SPADES: 'trump-spades', SUNS: 'trump-suns'
     };
 
     function clearSlots(slots) {
@@ -470,13 +472,20 @@
       highBidVal.textContent = high + bidSuitText;
       highBidBy.textContent = data.bidder_label ? ' by ' + data.bidder_label : '';
 
-      // Minimum valid bid is one above current high, at least 7
+      // Minimum valid bid for regular suits is one above current high, at least 7
       minBid = Math.max(7, high + 1);
+      // Suns can match a suit bid (not another suns / no-bid baseline)
+      const currentIsSuit = data.current_high_bid_suit && data.current_high_bid_suit !== 'SUNS';
+      minBidForSuns = currentIsSuit ? Math.max(7, high) : Math.max(7, high + 1);
+
       bidValue = minBid;
       bidValDisp.textContent = bidValue;
 
       const canBid = minBid <= 13;
-      suitBtns.forEach(b => { b.disabled = !canBid; });
+      const canBidSuns = minBidForSuns <= 13;
+      suitBtns.forEach(b => {
+        b.disabled = (b.dataset.suit === 'SUNS') ? !canBidSuns : !canBid;
+      });
       bidDecBtn.disabled = true;
       bidIncBtn.disabled = !canBid || bidValue >= 13;
       bidBtn.disabled = true;   // need suit selected first
@@ -632,30 +641,41 @@
         suitBtns.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         selectedSuit = btn.dataset.suit;
-        bidBtn.disabled = (minBid > 13);   // enable bid if suit chosen & bid in range
+        // When switching suits, snap bidValue to the effective min for this suit
+        const effectiveMin = (selectedSuit === 'SUNS') ? minBidForSuns : minBid;
+        if (bidValue < effectiveMin) {
+          bidValue = effectiveMin;
+          bidValDisp.textContent = bidValue;
+        }
+        bidDecBtn.disabled = (bidValue <= effectiveMin);
+        bidIncBtn.disabled = (bidValue >= 13);
+        bidBtn.disabled = (effectiveMin > 13);
       });
     });
 
     bidDecBtn.addEventListener('click', () => {
-      if (bidValue > minBid) {
+      const effectiveMin = (selectedSuit === 'SUNS') ? minBidForSuns : minBid;
+      if (bidValue > effectiveMin) {
         bidValue--;
         bidValDisp.textContent = bidValue;
-        bidDecBtn.disabled = (bidValue <= minBid);
+        bidDecBtn.disabled = (bidValue <= effectiveMin);
         bidIncBtn.disabled = (bidValue >= 13);
       }
     });
 
     bidIncBtn.addEventListener('click', () => {
+      const effectiveMin = (selectedSuit === 'SUNS') ? minBidForSuns : minBid;
       if (bidValue < 13) {
         bidValue++;
         bidValDisp.textContent = bidValue;
-        bidDecBtn.disabled = (bidValue <= minBid);
+        bidDecBtn.disabled = (bidValue <= effectiveMin);
         bidIncBtn.disabled = (bidValue >= 13);
       }
     });
 
     bidBtn.addEventListener('click', () => {
-      if (!selectedSuit || minBid > 13) return;
+      const effectiveMin = (selectedSuit === 'SUNS') ? minBidForSuns : minBid;
+      if (!selectedSuit || effectiveMin > 13) return;
       sendAction({ kind: 'bid', value: bidValue, suit: selectedSuit });
     });
 

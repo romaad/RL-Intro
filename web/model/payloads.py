@@ -124,15 +124,15 @@ class CardJson:
 @dataclass(frozen=True)
 class BidJson:
     value: int
-    suit: str
+    suit: str  # "HEARTS"/"DIAMONDS"/"CLUBS"/"SPADES" or "SUNS" (no-trump)
 
-    def to_tuple(self) -> tuple[int, Suit]:
-        return (self.value, Suit[self.suit])
+    def to_tuple(self) -> tuple[int, Suit | None]:
+        return (self.value, None if self.suit == "SUNS" else Suit[self.suit])
 
     @staticmethod
-    def from_tuple(bid: tuple[int, Suit]) -> "BidJson":
+    def from_tuple(bid: tuple[int, Suit | None]) -> "BidJson":
         value, suit = bid
-        return BidJson(value=value, suit=suit.name)
+        return BidJson(value=value, suit="SUNS" if suit is None else suit.name)
 
     @staticmethod
     def from_dict(data: Mapping[str, Any]) -> "BidJson":

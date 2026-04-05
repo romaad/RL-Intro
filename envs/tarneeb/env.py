@@ -54,7 +54,7 @@ class TarneebGameActions(Enum):
 @dataclass(frozen=True)
 class BidAction:
     value: int
-    suit: Suit
+    suit: Suit | None  # None = "suns" (no-trump bid)
 
 
 @dataclass(frozen=True)
@@ -77,7 +77,7 @@ class TarneebState:
     # bidding
     current_high_bid: int
     bidder: int | None
-    bids: list[tuple[int, Suit] | None]
+    bids: list[tuple[int, Suit | None] | None]  # Suit=None means suns (no-trump)
 
     def __str__(self) -> str:
         return (
@@ -138,6 +138,7 @@ class PartialTarneebState:
     current_high_bid: int
     bidder: int | None
     last_player_idx: int | None
+    bids: list[tuple[int, Suit | None] | None]
 
     def __str__(self) -> str:
         return f"(P:{self.played_cards},H:{self.holding_cards},T:{self.trump_suit})"
@@ -156,6 +157,7 @@ class PartialTarneebState:
                 self.current_high_bid,
                 self.bidder,
                 self.last_player_idx,
+                tuple(self.bids),
             )
         )
 
@@ -173,6 +175,7 @@ class PartialTarneebState:
             and self.current_high_bid == other.current_high_bid
             and self.bidder == other.bidder
             and self.last_player_idx == other.last_player_idx
+            and self.bids == other.bids
         )
 
 
@@ -312,7 +315,23 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
             if not s.suit_selected:
                 bid_value = action.value
                 bid_suit = action.suit
-                if bid_value > s.current_high_bid and 7 <= bid_value <= 13:
+                # suns (suit=None) beats a suit bid at the same value,
+                # but cannot beat another suns bid at the same value
+                current_bid_is_suns = (
+                    s.bidder is not None
+                    and s.bids[s.bidder] is not None
+                    and s.bids[s.bidder][1] is None  # type: ignore[index]
+                )
+                suns_same_value = (
+                    bid_value == s.current_high_bid
+                    and bid_suit is None
+                    and not current_bid_is_suns
+                )
+                valid_bid = (
+                    7 <= bid_value <= 13
+                    and (bid_value > s.current_high_bid or suns_same_value)
+                )
+                if valid_bid:
                     new_bids = s.bids.copy()
                     new_bids[agent_idx] = (bid_value, bid_suit)
                     new_state = replace(
@@ -336,7 +355,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
                             if not new_state.suit_selected
                             else (
                                 none_throws(new_state.bidder)
-                                if new_state.trump_suit is not None
+                                if new_state.bidder is not None
                                 else 0
                             )
                         ),
@@ -374,7 +393,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
                         if not new_state.suit_selected
                         else (
                             none_throws(new_state.bidder)
-                            if new_state.trump_suit is not None
+                            if new_state.bidder is not None
                             else 0
                         )
                     ),
@@ -489,6 +508,7 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
             current_high_bid=s.current_high_bid,
             bidder=s.bidder,
             last_player_idx=s.last_player_idx,
+            bids=s.bids,
         )
 
     def agent_step(

@@ -656,6 +656,7 @@ a:hover {
 .info-pill.trump-diamonds { border-color: #ef9a9a; color: #ef9a9a; }
 .info-pill.trump-clubs    { border-color: #90caf9; color: #90caf9; }
 .info-pill.trump-spades   { border-color: #90caf9; color: #90caf9; }
+.info-pill.trump-suns     { border-color: #ffd700; color: #ffd700; }
 .info-pill-you { border-color: #69f0ae; color: #69f0ae; }
 .info-pill-opp { border-color: #ffab91; color: #ffab91; }
 
@@ -701,6 +702,7 @@ a:hover {
 .btn-suit.diamonds { color: #ef5350; border-color: #ef5350; }
 .btn-suit.clubs,
 .btn-suit.spades   { color: #b0bec5; border-color: #b0bec5; }
+.btn-suit.suns     { color: #ffd700; border-color: #ffd700; }
 
 .btn-suit.selected {
   background: rgba(255,255,255,.25);
