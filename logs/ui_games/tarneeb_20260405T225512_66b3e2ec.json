@@ -1,0 +1,145 @@
+{
+  "log_id": "tarneeb_20260405T225512_66b3e2ec",
+  "game_type": "tarneeb",
+  "started_at": "2026-04-05T22:55:12.019836+00:00",
+  "status": "in_progress",
+  "metadata": {
+    "player_names": [
+      "Ramadan",
+      "Mary",
+      "Bob",
+      "Abdo"
+    ],
+    "team_names": [
+      "Ramadan & Bob",
+      "Mary & Abdo"
+    ]
+  },
+  "initial_state": {
+    "hand": [
+      {
+        "suit": "CLUBS",
+        "number": 13,
+        "display": "K\u2663",
+        "valid": true
+      },
+      {
+        "suit": "CLUBS",
+        "number": 12,
+        "display": "Q\u2663",
+        "valid": true
+      },
+      {
+        "suit": "CLUBS",
+        "number": 8,
+        "display": "8\u2663",
+        "valid": true
+      },
+      {
+        "suit": "CLUBS",
+        "number": 7,
+        "display": "7\u2663",
+        "valid": true
+      },
+      {
+        "suit": "CLUBS",
+        "number": 4,
+        "display": "4\u2663",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 8,
+        "display": "8\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 7,
+        "display": "7\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 4,
+        "display": "4\u2666",
+        "valid": true
+      },
+      {
+        "suit": "HEARTS",
+        "number": 8,
+        "display": "8\u2665",
+        "valid": true
+      },
+      {
+        "suit": "HEARTS",
+        "number": 3,
+        "display": "3\u2665",
+        "valid": true
+      },
+      {
+        "suit": "SPADES",
+        "number": 6,
+        "display": "6\u2660",
+        "valid": true
+      },
+      {
+        "suit": "SPADES",
+        "number": 4,
+        "display": "4\u2660",
+        "valid": true
+      },
+      {
+        "suit": "SPADES",
+        "number": 1,
+        "display": "A\u2660",
+        "valid": true
+      }
+    ],
+    "trump_suit": null,
+    "trump_suit_display": null,
+    "current_high_bid_suit": null,
+    "current_high_bid_suit_display": null,
+    "phase": "bidding",
+    "score": [
+      0,
+      0
+    ],
+    "round_score": [
+      0,
+      0
+    ],
+    "round_num": 1,
+    "current_high_bid": 6,
+    "bidder": null,
+    "bidder_label": null,
+    "current_player": 0,
+    "player_card_counts": [
+      13,
+      13,
+      13,
+      13
+    ],
+    "trick": [],
+    "last_trick": [],
+    "player_labels": [
+      "You (Ramadan)",
+      "Mary",
+      "Bob",
+      "Abdo"
+    ],
+    "player_names": [
+      "Ramadan",
+      "Mary",
+      "Bob",
+      "Abdo"
+    ],
+    "team_names": [
+      "Ramadan & Bob",
+      "Mary & Abdo"
+    ],
+    "double_by": null,
+    "suit_selected": false
+  },
+  "events": []
+}

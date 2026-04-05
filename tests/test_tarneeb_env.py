@@ -90,9 +90,7 @@ class TarneebEnvRulesTests(unittest.TestCase):
         self.assertEqual(out_bid.next_agent_idx, 2)
 
         # Three consecutive passes should close bidding.
-        out_pass_2 = self.env.agent_step(
-            out_bid.next_state, TarneebGameActions.PASS, 2
-        )
+        out_pass_2 = self.env.agent_step(out_bid.next_state, TarneebGameActions.PASS, 2)
         out_pass_3 = self.env.agent_step(
             out_pass_2.next_state, TarneebGameActions.PASS, 3
         )

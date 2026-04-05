@@ -21,7 +21,9 @@ class UiGameLoggingTests(unittest.TestCase):
                         log_id = sess.get("easy21_log_id")
                     self.assertIsInstance(log_id, str)
 
-                    action_res = client.post("/api/easy21/action", json={"action": "hit"})
+                    action_res = client.post(
+                        "/api/easy21/action", json={"action": "hit"}
+                    )
                     self.assertEqual(action_res.status_code, 200)
 
                     log_path = Path(tmpdir) / f"{log_id}.json"

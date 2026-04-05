@@ -1,0 +1,461 @@
+{
+  "log_id": "tarneeb_20260405T225641_dc5f2e27",
+  "game_type": "tarneeb",
+  "started_at": "2026-04-05T22:56:41.916494+00:00",
+  "status": "in_progress",
+  "metadata": {
+    "player_names": [
+      "mo",
+      "Mazen",
+      "Bob",
+      "Amr"
+    ],
+    "team_names": [
+      "mo & Bob",
+      "Mazen & Amr"
+    ]
+  },
+  "initial_state": {
+    "hand": [
+      {
+        "suit": "CLUBS",
+        "number": 13,
+        "display": "K\u2663",
+        "valid": true
+      },
+      {
+        "suit": "CLUBS",
+        "number": 8,
+        "display": "8\u2663",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 13,
+        "display": "K\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 12,
+        "display": "Q\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 11,
+        "display": "J\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 9,
+        "display": "9\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 7,
+        "display": "7\u2666",
+        "valid": true
+      },
+      {
+        "suit": "DIAMONDS",
+        "number": 4,
+        "display": "4\u2666",
+        "valid": true
+      },
+      {
+        "suit": "HEARTS",
+        "number": 12,
+        "display": "Q\u2665",
+        "valid": true
+      },
+      {
+        "suit": "HEARTS",
+        "number": 10,
+        "display": "10\u2665",
+        "valid": true
+      },
+      {
+        "suit": "HEARTS",
+        "number": 4,
+        "display": "4\u2665",
+        "valid": true
+      },
+      {
+        "suit": "SPADES",
+        "number": 8,
+        "display": "8\u2660",
+        "valid": true
+      },
+      {
+        "suit": "SPADES",
+        "number": 1,
+        "display": "A\u2660",
+        "valid": true
+      }
+    ],
+    "trump_suit": null,
+    "trump_suit_display": null,
+    "current_high_bid_suit": null,
+    "current_high_bid_suit_display": null,
+    "phase": "bidding",
+    "score": [
+      0,
+      0
+    ],
+    "round_score": [
+      0,
+      0
+    ],
+    "round_num": 1,
+    "current_high_bid": 6,
+    "bidder": null,
+    "bidder_label": null,
+    "current_player": 0,
+    "player_card_counts": [
+      13,
+      13,
+      13,
+      13
+    ],
+    "trick": [],
+    "last_trick": [],
+    "player_labels": [
+      "You (mo)",
+      "Mazen",
+      "Bob",
+      "Amr"
+    ],
+    "player_names": [
+      "mo",
+      "Mazen",
+      "Bob",
+      "Amr"
+    ],
+    "team_names": [
+      "mo & Bob",
+      "Mazen & Amr"
+    ],
+    "double_by": null,
+    "suit_selected": false
+  },
+  "events": [
+    {
+      "timestamp": "2026-04-05T22:56:47.433345+00:00",
+      "action": {
+        "kind": "pass"
+      },
+      "player": 0,
+      "bid_events": [
+        {
+          "player": 0,
+          "kind": "pass"
+        },
+        {
+          "player": 1,
+          "kind": "bid",
+          "value": 9,
+          "suit": "HEARTS"
+        },
+        {
+          "player": 2,
+          "kind": "bid",
+          "value": 12,
+          "suit": "CLUBS"
+        },
+        {
+          "player": 3,
+          "kind": "bid",
+          "value": 13,
+          "suit": "SPADES"
+        }
+      ],
+      "play_events": [],
+      "done": false,
+      "result": null,
+      "state_after": {
+        "hand": [
+          {
+            "suit": "CLUBS",
+            "number": 13,
+            "display": "K\u2663",
+            "valid": true
+          },
+          {
+            "suit": "CLUBS",
+            "number": 8,
+            "display": "8\u2663",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 13,
+            "display": "K\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 12,
+            "display": "Q\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 11,
+            "display": "J\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 9,
+            "display": "9\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 7,
+            "display": "7\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 4,
+            "display": "4\u2666",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 12,
+            "display": "Q\u2665",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 10,
+            "display": "10\u2665",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 4,
+            "display": "4\u2665",
+            "valid": true
+          },
+          {
+            "suit": "SPADES",
+            "number": 8,
+            "display": "8\u2660",
+            "valid": true
+          },
+          {
+            "suit": "SPADES",
+            "number": 1,
+            "display": "A\u2660",
+            "valid": true
+          }
+        ],
+        "trump_suit": null,
+        "trump_suit_display": null,
+        "current_high_bid_suit": "SPADES",
+        "current_high_bid_suit_display": "\u2660",
+        "phase": "bidding",
+        "score": [
+          0,
+          0
+        ],
+        "round_score": [
+          0,
+          0
+        ],
+        "round_num": 1,
+        "current_high_bid": 13,
+        "bidder": 3,
+        "bidder_label": "Amr",
+        "current_player": 0,
+        "player_card_counts": [
+          13,
+          13,
+          13,
+          13
+        ],
+        "trick": [],
+        "last_trick": [],
+        "player_labels": [
+          "You (mo)",
+          "Mazen",
+          "Bob",
+          "Amr"
+        ],
+        "player_names": [
+          "mo",
+          "Mazen",
+          "Bob",
+          "Amr"
+        ],
+        "team_names": [
+          "mo & Bob",
+          "Mazen & Amr"
+        ],
+        "double_by": null,
+        "suit_selected": false
+      }
+    },
+    {
+      "timestamp": "2026-04-05T22:56:53.794831+00:00",
+      "action": {
+        "kind": "pass"
+      },
+      "player": 0,
+      "bid_events": [
+        {
+          "player": 0,
+          "kind": "pass"
+        },
+        {
+          "player": 1,
+          "kind": "pass"
+        },
+        {
+          "player": 2,
+          "kind": "pass"
+        },
+        {
+          "player": 3,
+          "kind": "pass"
+        }
+      ],
+      "play_events": [],
+      "done": false,
+      "result": null,
+      "state_after": {
+        "hand": [
+          {
+            "suit": "CLUBS",
+            "number": 13,
+            "display": "K\u2663",
+            "valid": true
+          },
+          {
+            "suit": "CLUBS",
+            "number": 8,
+            "display": "8\u2663",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 13,
+            "display": "K\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 12,
+            "display": "Q\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 11,
+            "display": "J\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 9,
+            "display": "9\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 7,
+            "display": "7\u2666",
+            "valid": true
+          },
+          {
+            "suit": "DIAMONDS",
+            "number": 4,
+            "display": "4\u2666",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 12,
+            "display": "Q\u2665",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 10,
+            "display": "10\u2665",
+            "valid": true
+          },
+          {
+            "suit": "HEARTS",
+            "number": 4,
+            "display": "4\u2665",
+            "valid": true
+          },
+          {
+            "suit": "SPADES",
+            "number": 8,
+            "display": "8\u2660",
+            "valid": true
+          },
+          {
+            "suit": "SPADES",
+            "number": 1,
+            "display": "A\u2660",
+            "valid": true
+          }
+        ],
+        "trump_suit": null,
+        "trump_suit_display": null,
+        "current_high_bid_suit": "SPADES",
+        "current_high_bid_suit_display": "\u2660",
+        "phase": "playing",
+        "score": [
+          0,
+          0
+        ],
+        "round_score": [
+          0,
+          0
+        ],
+        "round_num": 1,
+        "current_high_bid": 13,
+        "bidder": 3,
+        "bidder_label": "Amr",
+        "current_player": 0,
+        "player_card_counts": [
+          13,
+          13,
+          13,
+          13
+        ],
+        "trick": [],
+        "last_trick": [],
+        "player_labels": [
+          "You (mo)",
+          "Mazen",
+          "Bob",
+          "Amr"
+        ],
+        "player_names": [
+          "mo",
+          "Mazen",
+          "Bob",
+          "Amr"
+        ],
+        "team_names": [
+          "mo & Bob",
+          "Mazen & Amr"
+        ],
+        "double_by": null,
+        "suit_selected": true
+      }
+    }
+  ],
+  "updated_at": "2026-04-05T22:56:53.795042+00:00"
+}
