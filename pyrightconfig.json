@@ -2,6 +2,9 @@
   "venvPath": ".",
   "venv": "rlvenv",
   "typeCheckingMode": "basic",
+  "strict": [
+    "web_ui.py"
+  ],
   "exclude": [
     "**/__pycache__",
     "rlvenv", "**/node_modules", "**/.*", ".venv"

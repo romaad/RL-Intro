@@ -34,7 +34,7 @@ class DeckCard:
 
     def number(self) -> int:
         """Get the number of the card (1-54)."""
-        return self._number * self._suit.value.value
+        return self._number
 
     @property
     def suit(self) -> Suit:
@@ -344,15 +344,16 @@ class TarneebEnv(MultipleAgentEnv[TarneebState, PartialTarneebState, TarneebActi
             return self._invalid_move_outcome(s, agent_idx)
 
         if action == TarneebGameActions.DOUBLE:
-            if s.suit_selected and s.double_by is None:
+            if (not s.suit_selected) and s.double_by is None and s.bidder is not None:
                 new_state = replace(s, double_by=agent_idx)
                 return MultiAgentOutcome(
                     next_state=new_state,
                     reward_per_agent=self._no_reward(),
                     done=False,
-                    next_agent_idx=none_throws(s.bidder),
+                    next_agent_idx=next_agent(agent_idx),
                 )
-            # can't double before suit is selected or if already doubled
+            # can only double during bidding, after at least one bid,
+            # and only once
             return self._invalid_move_outcome(s, agent_idx)
 
     def _get_updated_round_score(

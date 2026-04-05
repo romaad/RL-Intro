@@ -119,14 +119,13 @@
       <div class="action-row">
         <button class="btn btn-hit" id="bid-btn" disabled>BID</button>
         <button class="btn btn-pass btn-stick" id="pass-btn" disabled>PASS</button>
+        <button class="btn btn-double" id="double-btn" disabled>DOUBLE</button>
       </div>
     </div>
 
     <!-- Playing controls (shown during playing phase) -->
     <div id="play-controls" style="display:none; width:100%; max-width:600px;">
-      <div class="action-row action-row--spaced">
-        <button class="btn btn-double" id="double-btn" style="display:none;" disabled>DOUBLE</button>
-      </div>
+      <div class="action-row action-row--spaced"></div>
     </div>
 
     <!-- Rules accordion -->
@@ -362,6 +361,7 @@
       bidIncBtn.disabled = !canBid || bidValue >= 13;
       bidBtn.disabled = true;   // need suit selected first
       passBtn.disabled = false;
+      doubleBtn.disabled = !(data.bidder !== null && data.double_by === null);
       selectedSuit = null;
       suitBtns.forEach(b => b.classList.remove('selected'));
     }
@@ -373,15 +373,7 @@
 
       const enabled = gameActive;
       renderHand(data.hand, enabled);
-
-      // Double button: available if suit is selected and nobody has doubled yet
-      const canDouble = data.suit_selected && data.double_by === null;
-      if (canDouble) {
-        doubleBtn.style.display = '';
-        doubleBtn.disabled = !enabled;
-      } else {
-        doubleBtn.style.display = 'none';
-      }
+      doubleBtn.disabled = true;
     }
 
     function applyState(data) {

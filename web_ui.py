@@ -7,15 +7,17 @@ Run with:
 Then open http://localhost:5000 in your browser.
 """
 
+import argparse
 import os
 import sys
+from typing import Any, Mapping, cast
 
 from flask import Flask, jsonify, render_template, request, session
-import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from easy21.easy21 import Easy21Action, Easy21Env, Easy21State  # noqa: E402
+from envs.tarneeb.agents import RandomTarneebAgent  # noqa: E402
 from envs.tarneeb.env import (  # noqa: E402
     BidAction,
     DeckCard,
@@ -24,7 +26,16 @@ from envs.tarneeb.env import (  # noqa: E402
     TarneebGameActions,
     TarneebState,
 )
-from envs.tarneeb.agents import RandomTarneebAgent  # noqa: E402
+from web.model import (  # noqa: E402
+    CardJson,
+    Easy21ActionResponseJson,
+    Easy21NewResponseJson,
+    Easy21StateJson,
+    JsonDict,
+    TarneebApiResponseJson,
+    TarneebClientStateJson,
+    TarneebSessionStateJson,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -40,30 +51,18 @@ _SUIT_SYMBOLS = {
     "SPADES": "♠",
 }
 
-_FACE_LABELS = {1: "A", 11: "J", 12: "Q", 13: "K"}
-
 
 # ---------------------------------------------------------------------------
 # Easy21 helpers
 # ---------------------------------------------------------------------------
 
 
-def _state_to_dict(state: Easy21State) -> dict:
-    return {
-        "player_sum": state.player_sum,
-        "dealer_sum": state.dealer_sum,
-        "dealer_first_card": state.dealer_first_card,
-        "is_terminal": state.is_terminal,
-    }
+def _state_to_dict(state: Easy21State) -> JsonDict:
+    return Easy21StateJson.from_state(state).to_dict()
 
 
-def _dict_to_state(d: dict) -> Easy21State:
-    return Easy21State(
-        player_sum=d["player_sum"],
-        dealer_sum=d["dealer_sum"],
-        dealer_first_card=d["dealer_first_card"],
-        is_terminal=d["is_terminal"],
-    )
+def _dict_to_state(data: Mapping[str, Any]) -> Easy21State:
+    return Easy21StateJson.from_dict(data).to_state()
 
 
 # ---------------------------------------------------------------------------
@@ -86,27 +85,25 @@ def easy21_new():
     env = Easy21Env()
     state = env.init_state()
     session["easy21_state"] = _state_to_dict(state)
-    # Preserve the true first card value; easy21.py's step constructors
-    # overwrite dealer_first_card with a boolean via positional arg ordering.
     session["easy21_dealer_first_card"] = state.dealer_first_card
     session["easy21_done"] = False
-    state_dict = _state_to_dict(state)
-    return jsonify(
-        {
-            "state": state_dict,
-            "wins": session.get("wins", 0),
-            "losses": session.get("losses", 0),
-            "draws": session.get("draws", 0),
-        }
+
+    payload = Easy21NewResponseJson(
+        state=Easy21StateJson.from_state(state),
+        wins=int(session.get("wins", 0)),
+        losses=int(session.get("losses", 0)),
+        draws=int(session.get("draws", 0)),
     )
+    return jsonify(payload.to_dict())
 
 
 @app.route("/api/easy21/action", methods=["POST"])
 def easy21_action():
-    data = request.get_json()
-    if not data or "action" not in data:
+    raw = request.get_json()
+    if not isinstance(raw, dict) or "action" not in raw:
         return jsonify({"error": "Action is required"}), 400
 
+    data = cast(Mapping[str, Any], raw)
     action_str = data["action"]
     if action_str == "hit":
         action = Easy21Action.HIT
@@ -115,43 +112,47 @@ def easy21_action():
     else:
         return jsonify({"error": f"Invalid action: {action_str}"}), 400
 
-    state_dict = session.get("easy21_state")
-    if not state_dict:
+    state_raw = session.get("easy21_state")
+    if not isinstance(state_raw, dict):
         return jsonify({"error": "No active game. Start a new game first."}), 400
 
-    if session.get("easy21_done", False):
+    if bool(session.get("easy21_done", False)):
         return jsonify({"error": "Game is already over. Start a new game."}), 400
 
-    state = _dict_to_state(state_dict)
+    state = _dict_to_state(cast(Mapping[str, Any], state_raw))
     env = Easy21Env()
     outcome = env.step(state, action)
     new_state = outcome.next_state
     session["easy21_state"] = _state_to_dict(new_state)
 
-    result = None
+    result: str | None = None
     if outcome.done:
         if outcome.reward > 0:
             result = "win"
-            session["wins"] = session.get("wins", 0) + 1
+            session["wins"] = int(session.get("wins", 0)) + 1
         elif outcome.reward < 0:
             result = "lose"
-            session["losses"] = session.get("losses", 0) + 1
+            session["losses"] = int(session.get("losses", 0)) + 1
         else:
             result = "draw"
-            session["draws"] = session.get("draws", 0) + 1
+            session["draws"] = int(session.get("draws", 0)) + 1
         session["easy21_done"] = True
 
-    return jsonify(
-        {
-            "state": _state_to_dict(new_state),
-            "dealer_first_card": session.get("easy21_dealer_first_card"),
-            "result": result,
-            "reward": outcome.reward,
-            "wins": session.get("wins", 0),
-            "losses": session.get("losses", 0),
-            "draws": session.get("draws", 0),
-        }
+    dealer_first_card_raw = session.get("easy21_dealer_first_card")
+    dealer_first_card = (
+        None if dealer_first_card_raw is None else int(dealer_first_card_raw)
     )
+
+    payload = Easy21ActionResponseJson(
+        state=Easy21StateJson.from_state(new_state),
+        dealer_first_card=dealer_first_card,
+        result=result,
+        reward=float(outcome.reward),
+        wins=int(session.get("wins", 0)),
+        losses=int(session.get("losses", 0)),
+        draws=int(session.get("draws", 0)),
+    )
+    return jsonify(payload.to_dict())
 
 
 # ---------------------------------------------------------------------------
@@ -159,146 +160,82 @@ def easy21_action():
 # ---------------------------------------------------------------------------
 
 
-def _card_to_dict(card: DeckCard) -> dict:
-    num = card.value()
-    label = _FACE_LABELS.get(num, str(num))
-    suit_name = card.suit.name
-    return {
-        "suit": suit_name,
-        "number": num,
-        "display": label + _SUIT_SYMBOLS[suit_name],
-    }
+def _tarneeb_state_to_session(state: TarneebState) -> JsonDict:
+    return TarneebSessionStateJson.from_state(state).to_dict()
 
 
-def _dict_to_card(d: dict) -> DeckCard:
-    return DeckCard(Suit[d["suit"]], d["number"])
-
-
-def _bid_to_dict(bid: tuple | None) -> dict | None:
-    if bid is None:
-        return None
-    value, suit = bid
-    return {"value": value, "suit": suit.name}
-
-
-def _tarneeb_state_to_session(state: TarneebState) -> dict:
-    """Serialize TarneebState to a JSON-compatible dict for session storage."""
-    return {
-        "played_cards": [_card_to_dict(c) for c in state.played_cards],
-        "holding_cards": [
-            [_card_to_dict(c) for c in hand] for hand in state.holding_cards
-        ],
-        "trump_suit": state.trump_suit.name if state.trump_suit else None,
-        "suit_selected": state.suit_selected,
-        "passes_count": state.passes_count,
-        "double_by": state.double_by,
-        "score": list(state.score),
-        "round_num": state.round_num,
-        "last_player_idx": state.last_player_idx,
-        "round_score": list(state.round_score),
-        "current_high_bid": state.current_high_bid,
-        "bidder": state.bidder,
-        "bids": [_bid_to_dict(b) for b in state.bids],
-    }
-
-
-def _session_to_tarneeb_state(d: dict) -> TarneebState:
-    """Deserialize a TarneebState from session storage."""
-    bids = []
-    for b in d["bids"]:
-        if b is None:
-            bids.append(None)
-        else:
-            bids.append((b["value"], Suit[b["suit"]]))
-    return TarneebState(
-        played_cards=[_dict_to_card(c) for c in d["played_cards"]],
-        holding_cards=[[_dict_to_card(c) for c in hand] for hand in d["holding_cards"]],
-        trump_suit=Suit[d["trump_suit"]] if d["trump_suit"] else None,
-        suit_selected=d["suit_selected"],
-        passes_count=d["passes_count"],
-        double_by=d["double_by"],
-        score=tuple(d["score"]),
-        round_num=d["round_num"],
-        last_player_idx=d["last_player_idx"],
-        round_score=tuple(d["round_score"]),
-        current_high_bid=d["current_high_bid"],
-        bidder=d["bidder"],
-        bids=bids,
-    )
+def _session_to_tarneeb_state(data: Mapping[str, Any]) -> TarneebState:
+    return TarneebSessionStateJson.from_dict(data).to_state()
 
 
 def _build_tarneeb_client_state(
     state: TarneebState,
     current_player: int,
-    last_trick: list[dict] | None = None,
-) -> dict:
-    """Build the JSON response payload shown to the human player (player 0)."""
+    last_trick: list[JsonDict] | None = None,
+) -> TarneebClientStateJson:
     suit_name = state.trump_suit.name if state.trump_suit else None
 
-    # Sort player 0's hand by suit value then card number descending (high cards first)
     hand = sorted(
         state.holding_cards[0],
-        key=lambda c: (c.suit.value.value, -c.value()),
+        key=lambda c: (c.suit.value.value, -c.number()),
     )
 
-    # Determine which cards in player 0's hand are valid plays
     valid_card_set: set[DeckCard] | None = None
     if state.suit_selected and state.played_cards:
         led_suit = state.played_cards[0].suit
         same_suit = [c for c in state.holding_cards[0] if c.suit == led_suit]
         if same_suit:
             valid_card_set = set(same_suit)
-    # If no restriction (leading a trick or no led suit cards), all cards valid
 
-    # Map played cards to the player who played them within the current trick
     trick = _build_trick_from_state(state)
+    last_trick_cards = [CardJson.from_dict(c) for c in (last_trick or [])]
 
     player_labels = ["You", "Right", "Partner", "Left"]
 
-    def card_info(c: DeckCard) -> dict:
-        d = _card_to_dict(c)
-        d["valid"] = valid_card_set is None or c in valid_card_set
-        return d
+    def card_info(c: DeckCard) -> CardJson:
+        return CardJson.from_card(c).with_valid(
+            valid_card_set is None or c in valid_card_set
+        )
 
-    return {
-        "hand": [card_info(c) for c in hand],
-        "trump_suit": suit_name,
-        "trump_suit_display": _SUIT_SYMBOLS[suit_name] if suit_name else None,
-        "phase": "bidding" if not state.suit_selected else "playing",
-        "score": list(state.score),
-        "round_score": list(state.round_score),
-        "round_num": state.round_num,
-        "current_high_bid": state.current_high_bid,
-        "bidder": state.bidder,
-        "bidder_label": (
+    return TarneebClientStateJson(
+        hand=[card_info(c) for c in hand],
+        trump_suit=suit_name,
+        trump_suit_display=_SUIT_SYMBOLS[suit_name] if suit_name else None,
+        phase="bidding" if not state.suit_selected else "playing",
+        score=list(state.score),
+        round_score=list(state.round_score),
+        round_num=state.round_num,
+        current_high_bid=state.current_high_bid,
+        bidder=state.bidder,
+        bidder_label=(
             player_labels[state.bidder] if state.bidder is not None else None
         ),
-        "current_player": current_player,
-        "player_card_counts": [len(h) for h in state.holding_cards],
-        "trick": trick,
-        "last_trick": last_trick or [],
-        "player_labels": player_labels,
-        "double_by": state.double_by,
-        "suit_selected": state.suit_selected,
-    }
+        current_player=current_player,
+        player_card_counts=[len(h) for h in state.holding_cards],
+        trick=trick,
+        last_trick=last_trick_cards,
+        player_labels=player_labels,
+        double_by=state.double_by,
+        suit_selected=state.suit_selected,
+    )
 
 
-def _build_trick_from_state(state: TarneebState) -> list[dict]:
-    trick: list[dict] = []
+def _build_trick_from_state(state: TarneebState) -> list[CardJson]:
+    trick: list[CardJson] = []
     if state.played_cards and state.last_player_idx is not None:
         n = len(state.played_cards)
         starting = (state.last_player_idx - n + 1) % 4
         for i, card in enumerate(state.played_cards):
             player = (starting + i) % 4
-            trick.append({**_card_to_dict(card), "player": player})
+            trick.append(CardJson.from_card(card).with_player(player))
     return trick
 
 
 def _play_event(
     action: DeckCard | TarneebGameActions | BidAction, agent_idx: int
-) -> dict | None:
+) -> CardJson | None:
     if isinstance(action, DeckCard):
-        return {**_card_to_dict(action), "player": agent_idx}
+        return CardJson.from_card(action).with_player(agent_idx)
     return None
 
 
@@ -307,7 +244,7 @@ def _maybe_completed_trick(
     action: DeckCard | TarneebGameActions | BidAction,
     agent_idx: int,
     next_state: TarneebState,
-) -> list[dict] | None:
+) -> list[CardJson] | None:
     if not isinstance(action, DeckCard):
         return None
     if len(prev_state.played_cards) != 3:
@@ -317,9 +254,9 @@ def _maybe_completed_trick(
 
     full_trick = prev_state.played_cards + [action]
     starting = (agent_idx - 3) % 4
-    trick: list[dict] = []
+    trick: list[CardJson] = []
     for i, card in enumerate(full_trick):
-        trick.append({**_card_to_dict(card), "player": (starting + i) % 4})
+        trick.append(CardJson.from_card(card).with_player((starting + i) % 4))
     return trick
 
 
@@ -327,13 +264,19 @@ def _advance_ai_turns(
     env: TarneebEnv,
     state: TarneebState,
     current_player: int,
-) -> tuple[TarneebState, int, bool, list[float], list[dict] | None, list[dict]]:
-    """Run AI agents (players 1-3) until it is player 0's turn or the game is done."""
+) -> tuple[
+    TarneebState,
+    int,
+    bool,
+    list[float],
+    list[CardJson] | None,
+    list[CardJson],
+]:
     ai_agents = [RandomTarneebAgent() for _ in range(4)]
     done = False
     rewards: list[float] = [0.0, 0.0, 0.0, 0.0]
-    last_completed_trick: list[dict] | None = None
-    play_events: list[dict] = []
+    last_completed_trick: list[CardJson] | None = None
+    play_events: list[CardJson] = []
 
     while current_player != 0 and not done:
         prev_state = state
@@ -369,68 +312,75 @@ def tarneeb_game():
 def tarneeb_new():
     env = TarneebEnv()
     state = env.init_state()
-    current_player = 0  # bidding starts with player 0
+    current_player = 0
 
     session["tarneeb_state"] = _tarneeb_state_to_session(state)
     session["tarneeb_current_player"] = current_player
     session["tarneeb_done"] = False
     session["tarneeb_last_trick"] = []
 
-    return jsonify(
-        {
-            **_build_tarneeb_client_state(state, current_player, []),
-            "play_events": [],
-            "trick_before": [],
-            "done": False,
-            "result": None,
-            "wins": session.get("tarneeb_wins", 0),
-            "losses": session.get("tarneeb_losses", 0),
-        }
+    payload = TarneebApiResponseJson(
+        state=_build_tarneeb_client_state(state, current_player, []),
+        play_events=[],
+        trick_before=[],
+        done=False,
+        result=None,
+        wins=int(session.get("tarneeb_wins", 0)),
+        losses=int(session.get("tarneeb_losses", 0)),
     )
+    return jsonify(payload.to_dict())
 
 
 @app.route("/api/tarneeb/action", methods=["POST"])
 def tarneeb_action():
-    data = request.get_json()
-    if not data or "action" not in data:
+    raw = request.get_json()
+    if not isinstance(raw, dict) or "action" not in raw:
         return jsonify({"error": "Action is required"}), 400
+    request_data = cast(Mapping[str, Any], raw)
 
-    state_data = session.get("tarneeb_state")
-    if not state_data:
+    state_raw = session.get("tarneeb_state")
+    if not isinstance(state_raw, dict):
         return jsonify({"error": "No active game. Start a new game first."}), 400
 
-    if session.get("tarneeb_done", False):
+    if bool(session.get("tarneeb_done", False)):
         return jsonify({"error": "Game is already over. Start a new game."}), 400
 
-    current_player = session.get("tarneeb_current_player", 0)
-    last_trick = session.get("tarneeb_last_trick", [])
-    state = _session_to_tarneeb_state(state_data)
+    current_player = int(session.get("tarneeb_current_player", 0))
+    last_trick_data_raw = session.get("tarneeb_last_trick", [])
+    last_trick_data = cast(list[Mapping[str, Any]], last_trick_data_raw)
+    last_trick: list[CardJson] = [CardJson.from_dict(c) for c in last_trick_data]
+
+    state = _session_to_tarneeb_state(cast(Mapping[str, Any], state_raw))
     env = TarneebEnv()
 
-    # Parse the action from the request
-    action_data = data["action"]
+    action_data_raw = request_data["action"]
+    if not isinstance(action_data_raw, dict):
+        return jsonify({"error": "Invalid action payload"}), 400
+
+    action_data = cast(Mapping[str, Any], action_data_raw)
     try:
         action = _parse_tarneeb_action(action_data, state)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
-    # Apply the human player's action
     prev_state = state
     trick_before = _build_trick_from_state(prev_state)
-    play_events: list[dict] = []
+    play_events: list[CardJson] = []
+
     outcome = env.agent_step(state, action, current_player)
     event = _play_event(action, current_player)
     if event:
         play_events.append(event)
+
     state = outcome.next_state
     maybe_trick = _maybe_completed_trick(prev_state, action, current_player, state)
     if maybe_trick:
         last_trick = maybe_trick
+
     done = outcome.done
     current_player = outcome.next_agent_idx
     rewards = outcome.reward_per_agent if done else [0.0, 0.0, 0.0, 0.0]
 
-    # Auto-advance AI turns
     if not done:
         state, current_player, done, rewards, ai_last_trick, ai_play_events = (
             _advance_ai_turns(env, state, current_player)
@@ -442,37 +392,39 @@ def tarneeb_action():
     session["tarneeb_state"] = _tarneeb_state_to_session(state)
     session["tarneeb_current_player"] = current_player
     session["tarneeb_done"] = done
-    session["tarneeb_last_trick"] = last_trick
+    session["tarneeb_last_trick"] = [c.to_dict() for c in last_trick]
 
-    result = None
+    result: str | None = None
     if done:
-        # Player 0 is on team 0 (players 0 and 2)
         player_reward = rewards[0]
         if player_reward > 0:
             result = "win"
-            session["tarneeb_wins"] = session.get("tarneeb_wins", 0) + 1
+            session["tarneeb_wins"] = int(session.get("tarneeb_wins", 0)) + 1
         elif player_reward < 0:
             result = "lose"
-            session["tarneeb_losses"] = session.get("tarneeb_losses", 0) + 1
+            session["tarneeb_losses"] = int(session.get("tarneeb_losses", 0)) + 1
         else:
             result = "draw"
 
-    return jsonify(
-        {
-            **_build_tarneeb_client_state(state, current_player, last_trick),
-            "play_events": play_events,
-            "trick_before": trick_before,
-            "done": done,
-            "result": result,
-            "wins": session.get("tarneeb_wins", 0),
-            "losses": session.get("tarneeb_losses", 0),
-        }
+    payload = TarneebApiResponseJson(
+        state=_build_tarneeb_client_state(
+            state,
+            current_player,
+            [c.to_dict() for c in last_trick],
+        ),
+        play_events=play_events,
+        trick_before=trick_before,
+        done=done,
+        result=result,
+        wins=int(session.get("tarneeb_wins", 0)),
+        losses=int(session.get("tarneeb_losses", 0)),
     )
+    return jsonify(payload.to_dict())
 
 
-def _parse_tarneeb_action(action_data: dict, state: TarneebState):
-    """Parse an action dict from the client into a TarneebAction."""
-    kind = action_data.get("kind")
+def _parse_tarneeb_action(action_data: Mapping[str, Any], state: TarneebState):
+    kind_raw = action_data.get("kind")
+    kind = str(kind_raw) if kind_raw is not None else ""
 
     if kind == "pass":
         return TarneebGameActions.PASS
@@ -483,17 +435,20 @@ def _parse_tarneeb_action(action_data: dict, state: TarneebState):
     if kind == "bid":
         value = action_data.get("value")
         suit_name = action_data.get("suit")
-        if not isinstance(value, int) or suit_name not in _SUIT_SYMBOLS:
+        if not isinstance(value, int) or not isinstance(suit_name, str):
+            raise ValueError("Invalid bid action")
+        if suit_name not in _SUIT_SYMBOLS:
             raise ValueError("Invalid bid action")
         return BidAction(value=value, suit=Suit[suit_name])
 
     if kind == "card":
         suit_name = action_data.get("suit")
         number = action_data.get("number")
-        if suit_name not in _SUIT_SYMBOLS or not isinstance(number, int):
+        if not isinstance(suit_name, str) or not isinstance(number, int):
+            raise ValueError("Invalid card action")
+        if suit_name not in _SUIT_SYMBOLS:
             raise ValueError("Invalid card action")
         card = DeckCard(Suit[suit_name], number)
-        # Verify the card is in the player's hand
         if card not in state.holding_cards[0]:
             raise ValueError("Card not in hand")
         return card
@@ -502,8 +457,6 @@ def _parse_tarneeb_action(action_data: dict, state: TarneebState):
 
 
 if __name__ == "__main__":
-    # Set the SECRET_KEY environment variable for a persistent session key.
-    # Without it a new random key is generated on every restart (invalidating sessions).
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     parser = argparse.ArgumentParser("Web server")
     parser.add_argument(
