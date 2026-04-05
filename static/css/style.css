@@ -293,7 +293,8 @@ a:hover {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,.72);
+  background: rgba(0,0,0,.56);
+  pointer-events: none;
   z-index: 11;
 }
 
