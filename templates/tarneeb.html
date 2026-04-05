@@ -34,6 +34,13 @@
       </div>
     </div>
 
+    <div class="start-overlay" id="start-overlay">
+      <div class="start-overlay-inner">
+        <div class="start-round" id="start-round">ROUND 1</div>
+        <div class="start-fight" id="start-fight">FIGHT!</div>
+      </div>
+    </div>
+
     <!-- Info strip: trump suit / scores / round -->
     <div class="tarneeb-info" id="tarneeb-info">
       <span class="info-pill" id="pill-trump">Trump: –</span>
@@ -155,6 +162,9 @@
     const newGameBtn = document.getElementById('new-game-btn');
     const playAgainBtn = document.getElementById('play-again-btn');
     const resultOverlay = document.getElementById('result-overlay');
+    const startOverlay = document.getElementById('start-overlay');
+    const startRound = document.getElementById('start-round');
+    const startFight = document.getElementById('start-fight');
     const resultEmoji = document.getElementById('result-emoji');
     const resultTitle = document.getElementById('result-title');
     const resultDetail = document.getElementById('result-detail');
@@ -330,6 +340,20 @@
       }
     }
 
+    async function showGameStartAnimation(roundNum) {
+      const roundNumber = Number.isInteger(roundNum) ? roundNum : 1;
+      startRound.textContent = 'ROUND ' + roundNumber;
+      startFight.classList.remove('show');
+      startOverlay.classList.add('show');
+
+      await sleep(900);
+      startFight.classList.add('show');
+      await sleep(900);
+
+      startOverlay.classList.remove('show');
+      startFight.classList.remove('show');
+    }
+
     function renderHand(hand, enabled) {
       handArea.innerHTML = '';
       hand.forEach(card => {
@@ -503,6 +527,7 @@
         });
         const data = await res.json();
         if (data.error) { statusMsg.textContent = data.error; return; }
+        await showGameStartAnimation(data.round_num || 1);
         gameActive = true;
         applyState(data);
       } catch {
