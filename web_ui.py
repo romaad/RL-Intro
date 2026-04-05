@@ -8,10 +8,14 @@ Then open http://localhost:5000 in your browser.
 """
 
 import argparse
+import json
 import os
 import random
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Mapping, cast
+from uuid import uuid4
 
 from flask import Flask, jsonify, render_template, request, session
 
@@ -65,6 +69,81 @@ _AI_NAME_POOL = [
     "Abdo",
     "Andrew",
 ]
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _ui_log_dir() -> Path:
+    configured = os.environ.get("UI_GAME_LOG_DIR", "logs/ui_games")
+    base = Path(configured)
+    if not base.is_absolute():
+        base = Path(__file__).resolve().parent / base
+    return base
+
+
+def _game_log_path(log_id: str) -> Path:
+    return _ui_log_dir() / f"{log_id}.json"
+
+
+def _write_game_log(data: JsonDict, log_id: str) -> None:
+    log_path = _game_log_path(log_id)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def _read_game_log(log_id: str) -> JsonDict | None:
+    log_path = _game_log_path(log_id)
+    if not log_path.exists():
+        return None
+    with log_path.open("r", encoding="utf-8") as f:
+        raw = json.load(f)
+    return cast(JsonDict, raw)
+
+
+def _start_game_log(
+    game_type: str,
+    initial_state: Mapping[str, Any],
+    metadata: Mapping[str, Any] | None = None,
+) -> str:
+    log_id = f"{game_type}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_{uuid4().hex[:8]}"
+    payload: JsonDict = {
+        "log_id": log_id,
+        "game_type": game_type,
+        "started_at": _now_iso(),
+        "status": "in_progress",
+        "metadata": dict(metadata or {}),
+        "initial_state": dict(initial_state),
+        "events": [],
+    }
+    _write_game_log(payload, log_id)
+    return log_id
+
+
+def _append_game_log_event(log_id: str, event: Mapping[str, Any]) -> None:
+    payload = _read_game_log(log_id)
+    if payload is None:
+        return
+    events_raw = payload.get("events", [])
+    events: list[JsonDict] = (
+        cast(list[JsonDict], events_raw) if isinstance(events_raw, list) else []
+    )
+    events.append(dict(event))
+    payload["events"] = events
+    payload["updated_at"] = _now_iso()
+    _write_game_log(payload, log_id)
+
+
+def _finalize_game_log(log_id: str, result: str) -> None:
+    payload = _read_game_log(log_id)
+    if payload is None:
+        return
+    payload["status"] = "done"
+    payload["result"] = result
+    payload["finished_at"] = _now_iso()
+    _write_game_log(payload, log_id)
 
 
 def _normalize_player_name(name: str | None) -> str:
@@ -122,6 +201,15 @@ def easy21_new():
     session["easy21_state"] = _state_to_dict(state)
     session["easy21_dealer_first_card"] = state.dealer_first_card
     session["easy21_done"] = False
+    try:
+        easy21_log_id = _start_game_log(
+            game_type="easy21",
+            initial_state=_state_to_dict(state),
+            metadata={"dealer_first_card": state.dealer_first_card},
+        )
+        session["easy21_log_id"] = easy21_log_id
+    except Exception:
+        session["easy21_log_id"] = None
 
     payload = Easy21NewResponseJson(
         state=Easy21StateJson.from_state(state),
@@ -187,6 +275,27 @@ def easy21_action():
         losses=int(session.get("losses", 0)),
         draws=int(session.get("draws", 0)),
     )
+
+    easy21_log_id_raw = session.get("easy21_log_id")
+    if isinstance(easy21_log_id_raw, str):
+        try:
+            _append_game_log_event(
+                easy21_log_id_raw,
+                {
+                    "timestamp": _now_iso(),
+                    "action": action_str,
+                    "state_before": _state_to_dict(state),
+                    "state_after": _state_to_dict(new_state),
+                    "reward": float(outcome.reward),
+                    "done": bool(outcome.done),
+                    "result": result,
+                },
+            )
+            if result is not None:
+                _finalize_game_log(easy21_log_id_raw, result)
+        except Exception:
+            pass
+
     return jsonify(payload.to_dict())
 
 
@@ -405,6 +514,22 @@ def tarneeb_new():
     session["tarneeb_last_trick"] = []
     session["tarneeb_player_names"] = player_names
 
+    tarneeb_initial = _build_tarneeb_client_state(
+        state, current_player, [], player_names
+    ).to_dict()
+    try:
+        tarneeb_log_id = _start_game_log(
+            game_type="tarneeb",
+            initial_state=tarneeb_initial,
+            metadata={
+                "player_names": player_names,
+                "team_names": _team_names(player_names),
+            },
+        )
+        session["tarneeb_log_id"] = tarneeb_log_id
+    except Exception:
+        session["tarneeb_log_id"] = None
+
     payload = TarneebApiResponseJson(
         state=_build_tarneeb_client_state(state, current_player, [], player_names),
         play_events=[],
@@ -530,6 +655,46 @@ def tarneeb_action():
         wins=int(session.get("tarneeb_wins", 0)),
         losses=int(session.get("tarneeb_losses", 0)),
     )
+
+    tarneeb_log_id_raw = session.get("tarneeb_log_id")
+    if isinstance(tarneeb_log_id_raw, str):
+        action_log: JsonDict
+        if isinstance(action, DeckCard):
+            action_log = {
+                "kind": "card",
+                "suit": action.suit.name,
+                "number": action.number(),
+            }
+        elif isinstance(action, BidAction):
+            action_log = {
+                "kind": "bid",
+                "value": action.value,
+                "suit": action.suit.name,
+            }
+        elif action == TarneebGameActions.PASS:
+            action_log = {"kind": "pass"}
+        else:
+            action_log = {"kind": "double"}
+
+        try:
+            _append_game_log_event(
+                tarneeb_log_id_raw,
+                {
+                    "timestamp": _now_iso(),
+                    "action": action_log,
+                    "player": 0,
+                    "bid_events": bid_events,
+                    "play_events": [c.to_dict() for c in play_events],
+                    "done": done,
+                    "result": result,
+                    "state_after": payload.state.to_dict(),
+                },
+            )
+            if result is not None:
+                _finalize_game_log(tarneeb_log_id_raw, result)
+        except Exception:
+            pass
+
     return jsonify(payload.to_dict())
 
 
