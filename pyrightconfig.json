@@ -1,0 +1,9 @@
+{
+  "venvPath": ".",
+  "venv": "rlvenv",
+  "typeCheckingMode": "basic",
+  "exclude": [
+    "**/__pycache__",
+    "rlvenv", "**/node_modules", "**/.*", ".venv"
+  ]
+}
