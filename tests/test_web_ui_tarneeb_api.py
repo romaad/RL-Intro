@@ -52,6 +52,12 @@ class TarneebApiTests(unittest.TestCase):
             self.assertIn("team_names", data)
             self.assertIn("bid_events", data)
             self.assertIsInstance(data["bid_events"], list)
+            self.assertGreaterEqual(data["current_high_bid"], 7)
+            self.assertIn(
+                data["current_high_bid_suit"],
+                ["HEARTS", "DIAMONDS", "CLUBS", "SPADES"],
+            )
+            self.assertIn(data["current_high_bid_suit_display"], ["♥", "♦", "♣", "♠"])
             self.assertEqual(data["player_names"][0], "Ramadan")
             self.assertEqual(data["team_names"], new_data["team_names"])
 

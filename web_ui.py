@@ -319,6 +319,11 @@ def _build_tarneeb_client_state(
     player_names: list[str] | None = None,
 ) -> TarneebClientStateJson:
     suit_name = state.trump_suit.name if state.trump_suit else None
+    current_high_bid_suit_name: str | None = None
+    if state.bidder is not None:
+        winning_bid = state.bids[state.bidder]
+        if winning_bid is not None:
+            current_high_bid_suit_name = winning_bid[1].name
 
     hand = sorted(
         state.holding_cards[0],
@@ -355,6 +360,12 @@ def _build_tarneeb_client_state(
         hand=[card_info(c) for c in hand],
         trump_suit=suit_name,
         trump_suit_display=_SUIT_SYMBOLS[suit_name] if suit_name else None,
+        current_high_bid_suit=current_high_bid_suit_name,
+        current_high_bid_suit_display=(
+            _SUIT_SYMBOLS[current_high_bid_suit_name]
+            if current_high_bid_suit_name
+            else None
+        ),
         phase="bidding" if not state.suit_selected else "playing",
         score=list(state.score),
         round_score=list(state.round_score),

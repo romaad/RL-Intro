@@ -400,15 +400,18 @@
       pillRound.textContent = 'Round: ' + data.round_num;
 
       // Current bid
+      const bidSuitText = data.current_high_bid_suit_display
+        ? (' ' + data.current_high_bid_suit_display)
+        : '';
       if (!data.suit_selected && data.bidder !== null) {
         pillBid.textContent =
-          'Bid: ' + data.current_high_bid +
+          'Bid: ' + data.current_high_bid + bidSuitText +
           (data.bidder_label ? ' by ' + data.bidder_label : '');
       } else if (data.phase === 'bidding') {
         pillBid.textContent = 'Bid: –';
       } else {
         pillBid.textContent =
-          'Bid: ' + data.current_high_bid +
+          'Bid: ' + data.current_high_bid + bidSuitText +
           (data.bidder_label ? ' by ' + data.bidder_label : '');
       }
     }
@@ -438,7 +441,10 @@
       renderHand(data.hand, false);
 
       const high = data.current_high_bid;
-      highBidVal.textContent = high;
+      const bidSuitText = data.current_high_bid_suit_display
+        ? (' ' + data.current_high_bid_suit_display)
+        : '';
+      highBidVal.textContent = high + bidSuitText;
       highBidBy.textContent = data.bidder_label ? ' by ' + data.bidder_label : '';
 
       // Minimum valid bid is one above current high, at least 7

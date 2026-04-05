@@ -284,6 +284,8 @@ class TarneebClientStateJson:
     hand: list[CardJson]
     trump_suit: str | None
     trump_suit_display: str | None
+    current_high_bid_suit: str | None
+    current_high_bid_suit_display: str | None
     phase: str
     score: list[int]
     round_score: list[int]
@@ -306,6 +308,8 @@ class TarneebClientStateJson:
             "hand": [c.to_dict() for c in self.hand],
             "trump_suit": self.trump_suit,
             "trump_suit_display": self.trump_suit_display,
+            "current_high_bid_suit": self.current_high_bid_suit,
+            "current_high_bid_suit_display": self.current_high_bid_suit_display,
             "phase": self.phase,
             "score": self.score,
             "round_score": self.round_score,
