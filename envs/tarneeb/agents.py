@@ -11,6 +11,8 @@ from agents.monte_carlo import MonteCarloAgent
 from agents.sarsa import SarsaAgent, SarsaLambdaAgent
 from agents.value_approx import (
     CNNApproxAgent,
+    CNNSeparateHeadsApproxAgent,
+    CNNSeparateHeadsValueApproximator,
     CNNValueApproximator,
     LinearApproxAgent,
     LinearValueApproximator,
@@ -380,4 +382,131 @@ class SarsaLambdaTarneebCNNApproxAgent(
 
     def update(self, steps: list) -> None:
         # Reset eligibility traces at episode end (standard SARSA(λ) behaviour).
+        self._eligibility.clear()
+
+
+# ---------------------------------------------------------------------------
+# Shared-network agents
+# ---------------------------------------------------------------------------
+
+def _is_bid_action(a: TarneebAction) -> bool:
+    """Return True for bidding-phase actions (BidAction or PASS)."""
+    return isinstance(a, BidAction) or a == TarneebGameActions.PASS
+
+
+class TarneebSeparateHeadsCNNValueApprox(
+    CNNSeparateHeadsValueApproximator[PartialTarneebState, TarneebAction]
+):
+    """CNN approximator with separate bid/play heads for Tarneeb.
+
+    Feature layout from ``tarneeb_feature_extractor`` (FEATURE_SIZE = 180):
+      [  0: 52] holding cards one-hot
+      [ 52:104] played cards one-hot
+      [104:109] trump suit one-hot (5-dim)
+      [109:161] action card one-hot
+      [161:180] other scalars (pass/double flags, bid, scores, round, phase)
+
+    The CNN block uses 3 channels over 52 card positions:
+      channel 0: holding cards  [  0: 52]
+      channel 1: played cards   [ 52:104]
+      channel 2: action card    [109:161]
+
+    The other block contains the remaining 24 scalar features:
+      [104:109] + [161:180]
+
+    Bidding actions (BidAction / PASS) are routed to ``head_bid``;
+    playing actions (DeckCard / DOUBLE) are routed to ``head_play``.
+    """
+
+    _CNN_CHANNEL_SLICES: list[tuple[int, int]] = [(0, 52), (52, 104), (109, 161)]
+    _OTHER_SLICES: list[tuple[int, int]] = [(104, 109), (161, 180)]
+
+    def __init__(self) -> None:
+        from .feature_extractor import tarneeb_feature_extractor
+
+        super().__init__(
+            feature_extractor=tarneeb_feature_extractor,
+            cnn_input_len=52,
+            cnn_channel_slices=self._CNN_CHANNEL_SLICES,
+            other_slices=self._OTHER_SLICES,
+            bid_head_selector=_is_bid_action,
+            cnn_filters=16,
+            cnn_kernel=4,
+            fc_hidden=(256, 128, 64),
+            alpha=0.001,
+        )
+
+
+class SarsaLambdaTarneebSharedCNNApproxAgent(
+    _TarneebControlBaseAgent,
+    CNNApproxAgent[PartialTarneebState, TarneebAction],
+    SarsaLambdaAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA(λ) Tarneeb agent where all players share one unified CNN network.
+
+    Instantiate a single :class:`TarneebCNNValueApprox` and pass the same
+    instance to every agent so they all train the same network weights.
+    """
+
+    _FIXED_LEARNING_RATE: float = 0.1
+
+    @property
+    def name(self) -> str:
+        return f"TarneebSarsaSharedCNNApprox(λ={self._lambda})"
+
+    def __init__(
+        self,
+        lambbda: float,
+        gamma: float,
+        shared_approximator: CNNValueApproximator[PartialTarneebState, TarneebAction],
+    ) -> None:
+        _TarneebControlBaseAgent.__init__(self)
+        CNNApproxAgent.__init__(self, value_approximator=shared_approximator)
+        SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)
+
+    def get_variable_learning_rate(
+        self, s: PartialTarneebState, a: TarneebAction | None
+    ) -> float:
+        return self._FIXED_LEARNING_RATE
+
+    def update(self, steps: list) -> None:
+        self._eligibility.clear()
+
+
+class SarsaLambdaTarneebSeparateHeadsCNNApproxAgent(
+    _TarneebControlBaseAgent,
+    CNNSeparateHeadsApproxAgent[PartialTarneebState, TarneebAction],
+    SarsaLambdaAgent[PartialTarneebState, TarneebAction],
+):
+    """SARSA(λ) Tarneeb agent using a shared CNN with separate bid/play heads.
+
+    All four players share the same :class:`TarneebSeparateHeadsCNNValueApprox`
+    instance.  The shared backbone learns a common card representation while
+    the two specialised heads independently learn bidding and playing policies.
+    """
+
+    _FIXED_LEARNING_RATE: float = 0.1
+
+    @property
+    def name(self) -> str:
+        return f"TarneebSarsaSepHeadsCNNApprox(λ={self._lambda})"
+
+    def __init__(
+        self,
+        lambbda: float,
+        gamma: float,
+        shared_approximator: TarneebSeparateHeadsCNNValueApprox,
+    ) -> None:
+        _TarneebControlBaseAgent.__init__(self)
+        CNNSeparateHeadsApproxAgent.__init__(
+            self, value_approximator=shared_approximator
+        )
+        SarsaLambdaAgent.__init__(self, lambbda=lambbda, gamma=gamma)
+
+    def get_variable_learning_rate(
+        self, s: PartialTarneebState, a: TarneebAction | None
+    ) -> float:
+        return self._FIXED_LEARNING_RATE
+
+    def update(self, steps: list) -> None:
         self._eligibility.clear()

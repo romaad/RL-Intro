@@ -26,6 +26,10 @@ from envs.tarneeb.agents import (
     SarsaLambdaTarneebAgent,
     SarsaLambdaTarneebLinearApproxAgent,
     SarsaLambdaTarneebCNNApproxAgent,
+    SarsaLambdaTarneebSharedCNNApproxAgent,
+    SarsaLambdaTarneebSeparateHeadsCNNApproxAgent,
+    TarneebCNNValueApprox,
+    TarneebSeparateHeadsCNNValueApprox,
 )
 from plot import turn_plot_off
 from utils import drange
@@ -101,6 +105,18 @@ def run_tarneeb(args: _Args) -> None:
                 SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
                 for _ in range(ai_count)
             ]
+        elif args.agent == "shared-cnn":
+            shared_approx = TarneebCNNValueApprox()
+            ai_agents = [
+                SarsaLambdaTarneebSharedCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(ai_count)
+            ]
+        elif args.agent == "separate-heads-cnn":
+            shared_approx = TarneebSeparateHeadsCNNValueApprox()
+            ai_agents = [
+                SarsaLambdaTarneebSeparateHeadsCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(ai_count)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
         agents.extend(ai_agents)
@@ -122,6 +138,18 @@ def run_tarneeb(args: _Args) -> None:
         elif args.agent == "cnn-approx":
             agents = [
                 SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
+                for _ in range(4)
+            ]
+        elif args.agent == "shared-cnn":
+            shared_approx = TarneebCNNValueApprox()
+            agents = [
+                SarsaLambdaTarneebSharedCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(4)
+            ]
+        elif args.agent == "separate-heads-cnn":
+            shared_approx = TarneebSeparateHeadsCNNValueApprox()
+            agents = [
+                SarsaLambdaTarneebSeparateHeadsCNNApproxAgent(0.5, 1.0, shared_approx)
                 for _ in range(4)
             ]
         else:
@@ -196,7 +224,8 @@ def create_parser():
         "--agent",
         type=str,
         default="mc",
-        choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx"],
+        choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx",
+                 "shared-cnn", "separate-heads-cnn"],
         help="The RL agent to use for AI players in Tarneeb.",
     )
     parser.add_argument(
