@@ -242,6 +242,7 @@ class MultiAgentRunner(Generic[State, PartialState, Action]):
         agents: list[Agent[PartialState, Action]],
         num_episodes: int,
         record_cnt: int = 0,
+        checkpoint_every: int = 0,
     ) -> list[float]:
         total_rewards = [0.0] * len(agents)
         for epi in range(num_episodes):
@@ -254,6 +255,10 @@ class MultiAgentRunner(Generic[State, PartialState, Action]):
             if epi % 10000 == 0 and epi > 0:
                 avg_rewards = [total / (epi + 1) for total in total_rewards]
                 print(f"Completed {epi} episodes, avg rewards so far: {avg_rewards}")
+            if checkpoint_every > 0 and epi % checkpoint_every == 0 and epi > 0:
+                for agent in agents:
+                    agent.checkpoint()
+                print(f"Checkpoint saved at episode {epi}")
         for agent in agents:
             agent.on_train_end()
         return [total / num_episodes for total in total_rewards]
