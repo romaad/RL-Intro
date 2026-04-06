@@ -213,21 +213,23 @@ class MultiAgentRunner(Generic[State, PartialState, Action]):
         total_rewards = [0.0] * len(agents)
         steps_per_agent: list[list[Step[PartialState, Action]]] = [[] for _ in agents]
         while not done:
-            partial_state = env.to_partial_state(state, agent_idx)
-            action = agents[agent_idx].act(partial_state)
-            outcome = env.agent_step(state, action, agent_idx)
-            reward = outcome.reward_per_agent[agent_idx]
-            total_rewards[agent_idx] += reward
+            acting_agent_idx = agent_idx
+            partial_state = env.to_partial_state(state, acting_agent_idx)
+            action = agents[acting_agent_idx].act(partial_state)
+            outcome = env.agent_step(state, action, acting_agent_idx)
+            reward = outcome.reward_per_agent[acting_agent_idx]
+            total_rewards[acting_agent_idx] += reward
             state = outcome.next_state
             done = outcome.done
             agent_idx = outcome.next_agent_idx
-            # For simplicity, update each agent with their own steps
-            prev_partial_state = partial_state
-            steps_per_agent[agent_idx].append(
+            # Update the acting agent (not the next agent)
+            next_partial_state = env.to_partial_state(state, acting_agent_idx)
+            next_action = agents[acting_agent_idx].act(next_partial_state)
+            steps_per_agent[acting_agent_idx].append(
                 Step(action=action, outcome=Outcome(state, reward, done))
             )
-            agents[agent_idx].update_step(
-                prev_partial_state, action, reward, partial_state, action
+            agents[acting_agent_idx].update_step(
+                partial_state, action, reward, next_partial_state, next_action
             )
         if print_game:
             for i, steps in enumerate(steps_per_agent):
