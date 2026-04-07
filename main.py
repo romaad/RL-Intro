@@ -26,6 +26,10 @@ from envs.tarneeb.agents import (
     SarsaLambdaTarneebAgent,
     SarsaLambdaTarneebLinearApproxAgent,
     SarsaLambdaTarneebCNNApproxAgent,
+    SarsaLambdaTarneebSharedCNNApproxAgent,
+    SarsaLambdaTarneebSeparateHeadsCNNApproxAgent,
+    TarneebCNNValueApprox,
+    TarneebSeparateHeadsCNNValueApprox,
 )
 from plot import turn_plot_off
 from utils import drange
@@ -41,6 +45,7 @@ class _Args:
     human_players: int
     verbose: bool
     agent: str
+    checkpoint_every: int
 
 
 def run_easy21(args: _Args) -> None:
@@ -101,6 +106,18 @@ def run_tarneeb(args: _Args) -> None:
                 SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
                 for _ in range(ai_count)
             ]
+        elif args.agent == "shared-cnn":
+            shared_approx = TarneebCNNValueApprox()
+            ai_agents = [
+                SarsaLambdaTarneebSharedCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(ai_count)
+            ]
+        elif args.agent == "separate-heads-cnn":
+            shared_approx = TarneebSeparateHeadsCNNValueApprox()
+            ai_agents = [
+                SarsaLambdaTarneebSeparateHeadsCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(ai_count)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
         agents.extend(ai_agents)
@@ -124,6 +141,18 @@ def run_tarneeb(args: _Args) -> None:
                 SarsaLambdaTarneebCNNApproxAgent(lambbda=0.5, gamma=1.0)
                 for _ in range(4)
             ]
+        elif args.agent == "shared-cnn":
+            shared_approx = TarneebCNNValueApprox()
+            agents = [
+                SarsaLambdaTarneebSharedCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(4)
+            ]
+        elif args.agent == "separate-heads-cnn":
+            shared_approx = TarneebSeparateHeadsCNNValueApprox()
+            agents = [
+                SarsaLambdaTarneebSeparateHeadsCNNApproxAgent(0.5, 1.0, shared_approx)
+                for _ in range(4)
+            ]
         else:
             raise ValueError(f"Unknown agent: {args.agent}")
     for agent in agents:
@@ -141,7 +170,8 @@ def run_tarneeb(args: _Args) -> None:
         turn_plot_off()
     env = TarneebEnv()
     avg_rewards = runner.run_episodes(
-        env, agents, args.episodes, record_cnt=args.record_cnt
+        env, agents, args.episodes, record_cnt=args.record_cnt,
+        checkpoint_every=args.checkpoint_every,
     )
     print(
         f"Avg rewards for Tarneeb agents over {args.episodes} episodes: {avg_rewards}"
@@ -196,8 +226,15 @@ def create_parser():
         "--agent",
         type=str,
         default="mc",
-        choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx"],
+        choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx",
+                 "shared-cnn", "separate-heads-cnn"],
         help="The RL agent to use for AI players in Tarneeb.",
+    )
+    parser.add_argument(
+        "--checkpoint-every",
+        type=int,
+        default=0,
+        help="Save a checkpoint every N episodes during training (0 = disabled).",
     )
     parser.add_argument(
         "--verbose",
@@ -219,6 +256,7 @@ def main() -> None:
         human_players=args.human_players,
         verbose=args.verbose,
         agent=args.agent,
+        checkpoint_every=args.checkpoint_every,
     )
     if args.game == "easy21":
         run_easy21(args_dataclass)
