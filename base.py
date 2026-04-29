@@ -266,6 +266,69 @@ class MultiAgentRunner(Generic[State, PartialState, Action]):
         return [total / num_episodes for total in total_rewards]
 
 
+class AlphaZeroMultiAgentRunner(MultiAgentRunner[State, PartialState, Action]):
+    """Multi-agent runner tailored for AlphaZero agents.
+
+    Differences from :class:`MultiAgentRunner`:
+
+    * Calls ``agent.set_full_state(state)`` before each ``agent.act()`` so
+      that the agent can use the full game state to run MCTS simulations
+      (without leaking hidden information to the neural network, which only
+      ever sees the partial state).
+    * Avoids the redundant second ``act()`` call that the parent runner makes
+      for SARSA's ``update_step``; instead calls ``update_step`` with
+      ``next_action=None`` (AlphaZero agents ignore it).
+    * Calls ``agent.on_episode_end(final_rewards)`` with the per-agent
+      cumulative game rewards so that each agent can assign value targets to
+      its episode buffer and push training tuples to the shared replay buffer.
+    """
+
+    def run_episode(
+        self,
+        env: MultipleAgentEnv[State, PartialState, Action],
+        agents: list[Agent[PartialState, Action]],
+        print_game: bool = False,
+    ) -> list[float]:
+        env.reset()
+        state = env.init_state()
+        done = False
+        agent_idx = 0
+        total_rewards = [0.0] * len(agents)
+        final_rewards: list[float] = [0.0] * len(agents)
+
+        while not done:
+            acting_agent_idx = agent_idx
+            partial_state = env.to_partial_state(state, acting_agent_idx)
+            agent = agents[acting_agent_idx]
+
+            # Give the acting agent access to the full state for MCTS
+            if hasattr(agent, "set_full_state"):
+                agent.set_full_state(state)  # type: ignore[union-attr]
+
+            action = agent.act(partial_state)
+            outcome = env.agent_step(state, action, acting_agent_idx)
+            reward = outcome.reward_per_agent[acting_agent_idx]
+            total_rewards[acting_agent_idx] += reward
+            state = outcome.next_state
+            done = outcome.done
+            agent_idx = outcome.next_agent_idx
+
+            if done:
+                final_rewards = list(outcome.reward_per_agent)
+
+        # Notify agents with game-end rewards (value targets)
+        for agent in agents:
+            if hasattr(agent, "on_episode_end"):
+                agent.on_episode_end(final_rewards)  # type: ignore[union-attr]
+            else:
+                agent.update([])
+
+        if print_game:
+            print(f"Episode rewards: {total_rewards}")
+
+        return total_rewards
+
+
 class NotSupportedError(Exception):
     """Exception raised for unsupported operations in the environment."""
 

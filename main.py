@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Sequence
-from base import Agent, Runner, MultiAgentRunner
+from base import Agent, Runner, MultiAgentRunner, AlphaZeroMultiAgentRunner
 from easy21.easy21 import (
     Easy21Env,
     Easy21State,
@@ -80,7 +80,88 @@ def run_easy21(args: _Args) -> None:
         agent.checkpoint()
 
 
+def _build_alphazero_agents(
+    args: _Args, env: TarneebEnv
+) -> tuple[list, object]:
+    """Instantiate shared SENet, 4 AlphaZero agents, and a trainer.
+
+    Returns ``(agents, trainer)``; *trainer* is ``None`` in play mode.
+    """
+    from agents.alphazero.neural_network import NeuralNetwork
+    from agents.alphazero.tarneeb_mcts import TarneebMCTS
+    from agents.alphazero.alphazero_trainer import AlphaZeroTrainer
+    from envs.tarneeb.alphazero_model import TarneebSENet
+    from envs.tarneeb.alphazero_agent import AlphaZeroTarneebAgent
+
+    is_train = args.mode == "train"
+    temperature = 1.0 if is_train else 0.1
+    num_simulations = 50 if is_train else 200
+
+    model = TarneebSENet()
+    shared_nn = NeuralNetwork(model, lr=0.001)
+    replay_buffer: list = []
+
+    mcts_instances = [
+        TarneebMCTS(env, shared_nn, num_simulations=num_simulations)
+        for _ in range(4)
+    ]
+    az_agents = [
+        AlphaZeroTarneebAgent(
+            agent_idx=i,
+            nn=shared_nn,
+            mcts=mcts_instances[i],
+            replay_buffer=replay_buffer,
+            temperature=temperature,
+        )
+        for i in range(4)
+    ]
+
+    checkpoint_path = "agents_pickes/alphazero_tarneeb_latest.pt"
+    if not is_train:
+        try:
+            shared_nn.load(checkpoint_path)
+            print(f"Loaded AlphaZero checkpoint from {checkpoint_path}")
+        except FileNotFoundError:
+            print("No AlphaZero checkpoint found; using untrained network.")
+
+    trainer = None
+    if is_train:
+        trainer = AlphaZeroTrainer(
+            env=env,
+            nn=shared_nn,
+            agents=az_agents,
+            replay_buffer=replay_buffer,
+            checkpoint_path="agents_pickes",
+        )
+
+    return az_agents, trainer
+
+
 def run_tarneeb(args: _Args) -> None:
+    env = TarneebEnv()
+
+    # AlphaZero has its own training loop
+    if args.agent == "alphazero":
+        if not args.show_plot:
+            turn_plot_off()
+        az_agents, trainer = _build_alphazero_agents(args, env)
+        if args.mode == "train" and trainer is not None:
+            trainer.run(
+                num_iterations=args.episodes,
+                episodes_per_iter=10,
+                train_steps_per_iter=20,
+                checkpoint_every=max(1, args.checkpoint_every) if args.checkpoint_every > 0 else 10,
+            )
+        else:
+            az_runner = AlphaZeroMultiAgentRunner()
+            avg_rewards = az_runner.run_episodes(
+                env, az_agents, args.episodes, record_cnt=args.record_cnt
+            )
+            print(
+                f"Avg rewards for AlphaZero agents over {args.episodes} episodes: {avg_rewards}"
+            )
+        return
+
     if args.human_players > 0:
         # Humans + AI agents
         agents: list[Agent[PartialTarneebState, TarneebAction]] = [
@@ -168,7 +249,6 @@ def run_tarneeb(args: _Args) -> None:
     runner = MultiAgentRunner[TarneebState, PartialTarneebState, TarneebAction]()
     if not args.show_plot:
         turn_plot_off()
-    env = TarneebEnv()
     avg_rewards = runner.run_episodes(
         env, agents, args.episodes, record_cnt=args.record_cnt,
         checkpoint_every=args.checkpoint_every,
@@ -227,7 +307,7 @@ def create_parser():
         type=str,
         default="mc",
         choices=["mc", "sarsa", "sarsa-lambda", "value-approx", "cnn-approx",
-                 "shared-cnn", "separate-heads-cnn"],
+                 "shared-cnn", "separate-heads-cnn", "alphazero"],
         help="The RL agent to use for AI players in Tarneeb.",
     )
     parser.add_argument(
