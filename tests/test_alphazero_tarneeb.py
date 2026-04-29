@@ -193,32 +193,42 @@ class TestAvailableActionsMask(unittest.TestCase):
         self.assertEqual(int(mask[:52].sum()), len(partial_playing.holding_cards))
 
     def test_playing_phase_follow_suit(self) -> None:
+        # Build a state where the agent definitely has hearts and must follow suit
         env = TarneebEnv()
         partial = _fresh_partial(env)
         hearts_in_hand = [c for c in partial.holding_cards if c.suit == Suit.HEARTS]
-        if hearts_in_hand:
-            led_card = DeckCard(Suit.HEARTS, 7) if DeckCard(Suit.HEARTS, 7) in partial.holding_cards else hearts_in_hand[0]
-            # If we have hearts and the led suit is hearts we must follow
-            partial_following = replace(
-                partial,
-                trump_suit=Suit.SPADES,
-                played_cards=[led_card if led_card not in partial.holding_cards else DeckCard(Suit.HEARTS, 2)],
+        if not hearts_in_hand:
+            return  # skip if this particular deal has no hearts for agent 0
+
+        # Led card is a heart not in agent's hand (so it stays in played_cards legally)
+        hearts_not_in_hand = [
+            DeckCard(Suit.HEARTS, n)
+            for n in range(1, 14)
+            if DeckCard(Suit.HEARTS, n) not in partial.holding_cards
+        ]
+        if not hearts_not_in_hand:
+            return  # extremely unlikely; skip
+
+        partial_must_follow = replace(
+            partial,
+            trump_suit=Suit.SPADES,
+            played_cards=[hearts_not_in_hand[0]],
+        )
+        mask = available_actions_mask(partial_must_follow)
+
+        # Non-heart cards in hand must NOT be valid
+        non_heart_valid = any(
+            mask[action_to_index(c)] == 1.0
+            for c in partial_must_follow.holding_cards
+            if c.suit != Suit.HEARTS
+        )
+        self.assertFalse(non_heart_valid, "Must follow led suit when holding one")
+
+        # All hearts in hand must be valid
+        for c in hearts_in_hand:
+            self.assertEqual(
+                mask[action_to_index(c)], 1.0, f"{c} should be playable (follow suit)"
             )
-            # Re-use a simple scenario: agent has at least one heart
-            partial_must_follow = replace(
-                partial,
-                trump_suit=Suit.SPADES,
-                played_cards=[DeckCard(Suit.HEARTS, 2)],
-            )
-            hearts = [c for c in partial_must_follow.holding_cards if c.suit == Suit.HEARTS]
-            mask = available_actions_mask(partial_must_follow)
-            if hearts:
-                non_heart_valid = any(
-                    mask[action_to_index(c)] == 1.0
-                    for c in partial_must_follow.holding_cards
-                    if c.suit != Suit.HEARTS
-                )
-                self.assertFalse(non_heart_valid, "Must follow led suit")
 
 
 # ---------------------------------------------------------------------------
